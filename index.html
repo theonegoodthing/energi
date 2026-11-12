@@ -174,9 +174,10 @@
       gap: 5px;
       flex: 1;
       min-width: 120px;
+      margin-top: 8px;
     }
 
-    input[type="number"], input[type="text"], input[type="password"] {
+    input[type="number"], input[type="text"], input[type="password"], select {
       background: var(--bg);
       border: 1px solid var(--card-border);
       color: var(--text);
@@ -186,7 +187,7 @@
       width: 100%;
     }
 
-    input:focus {
+    input:focus, select:focus {
       outline: none;
       border-color: var(--accent);
     }
@@ -195,10 +196,10 @@
       background: var(--accent);
       color: #0f172a;
       border: none;
-      padding: 9px 16px;
+      padding: 9px 14px;
       border-radius: 8px;
       font-weight: 600;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       cursor: pointer;
       transition: opacity 0.2s;
     }
@@ -408,24 +409,44 @@
     <div class="two-col" style="margin-top: 18px; margin-bottom: 0;">
       <!-- HomeWizard P1 -->
       <div class="input-group" style="background: rgba(15,23,42,0.45); padding: 16px; border-radius: 10px; border: 1px solid var(--card-border);">
-        <div style="font-weight: 600; margin-bottom: 10px; display:flex; justify-content:space-between;">
-          <span>1. HomeWizard P1-mätare (Lokalt IP)</span>
+        <div style="font-weight: 600; margin-bottom: 6px; display:flex; justify-content:space-between;">
+          <span>1. HomeWizard P1-mätare (Lokalt API)</span>
           <span id="hwStatusText" style="font-size:0.8rem; color:var(--muted);">Ej aktiv</span>
         </div>
+
         <label>
-          Lokalt IP-adress på hemnätverket (t.ex. 192.168.1.45)
+          API-version
+          <select id="hwVersionSelect">
+            <option value="v2">API v2 (HTTPS + Token – Rekommenderas för GitHub Pages)</option>
+            <option value="v1">API v1 (HTTP – Utan token)</option>
+          </select>
+        </label>
+
+        <label>
+          Lokalt IP-adress (t.ex. 192.168.1.45)
           <input type="text" id="hwIpInput" placeholder="192.168.1.xxx" />
         </label>
-        <div style="display:flex; gap:8px; margin-top: 12px;">
-          <button class="btn" id="saveHwBtn">Anslut & Spara IP</button>
-          <button class="btn btn-secondary" id="clearHwBtn">Koppla från</button>
+
+        <div id="hwV2TokenBox">
+          <label>
+            HomeWizard v2 Token (krävs för HTTPS / v2)
+            <input type="password" id="hwTokenInput" placeholder="Klistra in eller generera token nedan" />
+          </label>
+          <div style="margin-top: 8px;">
+            <button class="btn btn-secondary" id="pairHwBtn" type="button">🔑 Hämta ny v2-token (Tryck först på P1-knappen)</button>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:8px; margin-top: 12px; flex-wrap: wrap;">
+          <button class="btn" id="saveHwBtn" type="button">Anslut & Spara</button>
+          <button class="btn btn-secondary" id="clearHwBtn" type="button">Koppla från</button>
         </div>
         <div class="sub-value" id="hwFeedback" style="margin-top: 8px;"></div>
       </div>
 
       <!-- Ngenic Tune -->
       <div class="input-group" style="background: rgba(15,23,42,0.45); padding: 16px; border-radius: 10px; border: 1px solid var(--card-border);">
-        <div style="font-weight: 600; margin-bottom: 10px; display:flex; justify-content:space-between;">
+        <div style="font-weight: 600; margin-bottom: 6px; display:flex; justify-content:space-between;">
           <span>2. Ngenic Tune (Värmepumpsstyrning)</span>
           <span id="ngenicStatusText" style="font-size:0.8rem; color:var(--muted);">Ej aktiv</span>
         </div>
@@ -434,8 +455,8 @@
           <input type="password" id="ngenicTokenInput" placeholder="Klistra in din Ngenic Bearer-token" />
         </label>
         <div style="display:flex; gap:8px; margin-top: 12px;">
-          <button class="btn" id="saveNgenicBtn">Anslut Ngenic</button>
-          <button class="btn btn-secondary" id="clearNgenicBtn">Rensa</button>
+          <button class="btn" id="saveNgenicBtn" type="button">Anslut Ngenic</button>
+          <button class="btn btn-secondary" id="clearNgenicBtn" type="button">Rensa</button>
         </div>
         <div class="sub-value" id="ngenicDataBox" style="margin-top: 8px;">
           Visar innetemperatur, börvärde och aktiv elprisstyrning när den är ansluten.
@@ -444,10 +465,10 @@
     </div>
 
     <div class="info-box">
-      <strong>Så här får du igång realtidsdata hemma:</strong><br/>
-      • <strong>HomeWizard P1:</strong> Öppna HomeWizard Energy-appen → <em>Inställningar</em> → <em>Mätare</em> → välj din P1-mätare och slå på <strong>Lokalt API (Local API)</strong>. IP-adressen hittar du i samma meny eller i din router.<br/>
-      • <strong>Viktigt vid körning via GitHub Pages (HTTPS):</strong> Eftersom GitHub använder krypterad <code>https://</code> och HomeWizard svarar lokalt över okrypterad <code>http://</code> kan webbläsaren blockera anropet av säkerhetsskäl ("Mixed Content"). Lös det genom att antingen tillåta <em>Osäkert innehåll (Insecure content)</em> för sidan i webbläsarens webbplatsinställningar, eller ladda ner denna <code>index.html</code> och öppna den direkt från datorn/mobilen hemma.<br/>
-      • <strong>Ngenic API:</strong> Logga in på <em>developer.ngenic.se</em> med ditt Ngenic-konto och skapa en personlig API-token för att hämta temperaturer och styrstatus.
+      <strong>Så här kopplar du HomeWizard P1 via HTTPS (API v2):</strong><br/>
+      1. <strong>Godkänn lokalt HTTPS-certifikat:</strong> Öppna en ny flik och gå till <code>https://<DIN-P1-IP>/api</code>. Webbläsaren varnar för ett självsignerat lokalt certifikat – klicka på <em>Avancerat → Fortsätt till sidan</em>. Efter det litar webbläsaren på mätaren.<br/>
+      2. <strong>Skapa v2-token:</strong> Gå ut till elskåpet och tryck en gång på knappen på din P1-mätare (den blinkar vitt), och klicka sedan på <strong>Hämta ny v2-token</strong> ovan inom 30 sekunder. Då sparas din nyckel automatiskt och realtidsdata börjar strömma över HTTPS!<br/>
+      3. <strong>Ngenic API:</strong> Logga in på <em>developer.ngenic.se</em> med ditt Ngenic-konto och skapa en personlig API-token för att hämta temperaturer och styrstatus.
     </div>
   </div>
 
@@ -458,21 +479,32 @@
     let hwInterval = null;
     let priceChartInstance = null;
 
+    function toggleHwVersionUI() {
+      const ver = document.getElementById('hwVersionSelect').value;
+      document.getElementById('hwV2TokenBox').style.display = ver === 'v2' ? 'block' : 'none';
+    }
+
     // Ladda sparade inställningar från localStorage
     function loadSavedSettings() {
       const savedGrid = localStorage.getItem('elkollen_grid');
       const savedTax = localStorage.getItem('elkollen_tax');
       const savedMarkup = localStorage.getItem('elkollen_markup');
       const savedHwIp = localStorage.getItem('elkollen_hw_ip');
+      const savedHwVer = localStorage.getItem('elkollen_hw_ver') || 'v2';
+      const savedHwToken = localStorage.getItem('elkollen_hw_token') || '';
       const savedNgenicToken = localStorage.getItem('elkollen_ngenic_token');
 
       if (savedGrid) document.getElementById('gridFeeInput').value = savedGrid;
       if (savedTax) document.getElementById('taxInput').value = savedTax;
       if (savedMarkup) document.getElementById('markupInput').value = savedMarkup;
 
+      document.getElementById('hwVersionSelect').value = savedHwVer;
+      document.getElementById('hwTokenInput').value = savedHwToken;
+      toggleHwVersionUI();
+
       if (savedHwIp) {
         document.getElementById('hwIpInput').value = savedHwIp;
-        startHomeWizardPolling(savedHwIp);
+        startHomeWizardPolling(savedHwIp, savedHwVer, savedHwToken);
       }
 
       if (savedNgenicToken) {
@@ -519,36 +551,87 @@
       document.getElementById('liveCostPerHour').textContent = costPerHour.toFixed(2).replace('.', ',') + ' kr/h';
     }
 
-    // HomeWizard P1 Local API Polling
-    async function pollHomeWizard(ip) {
-      const cleanIp = ip.replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim();
-      const endpoint = `http://${cleanIp}/api/v1/data`;
+    // Generera v2 Token genom att anropa POST https://<ip>/api/user
+    async function pairHomeWizardV2() {
+      const rawIp = document.getElementById('hwIpInput').value.trim();
+      if (!rawIp) {
+        document.getElementById('hwFeedback').textContent = 'Fyll i IP-adressen först.';
+        return;
+      }
+      const cleanIp = rawIp.replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim();
+      const feedbackEl = document.getElementById('hwFeedback');
+      feedbackEl.textContent = 'Försöker hämta token... (se till att du nyss tryckte på knappen på P1-mätaren)';
 
       try {
-        const res = await fetch(endpoint);
+        const res = await fetch(`https://${cleanIp}/api/user`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: 'elkollen_web' })
+        });
+        const data = await res.json();
+
+        if (data.token) {
+          document.getElementById('hwTokenInput').value = data.token;
+          localStorage.setItem('elkollen_hw_token', data.token);
+          localStorage.setItem('elkollen_hw_ip', cleanIp);
+          localStorage.setItem('elkollen_hw_ver', 'v2');
+          feedbackEl.style.color = 'var(--green)';
+          feedbackEl.textContent = 'Token hämtad och sparad! Startar realtidsmätning...';
+          startHomeWizardPolling(cleanIp, 'v2', data.token);
+        } else {
+          feedbackEl.style.color = 'var(--red)';
+          feedbackEl.textContent = `Svar från mätaren: ${data.error?.description || 'Tryck på knappen på P1-mätaren och försök igen inom 30 sek.'}`;
+        }
+      } catch (err) {
+        feedbackEl.style.color = 'var(--red)';
+        feedbackEl.innerHTML = `Kunde inte nå <code>https://${cleanIp}/api/user</code>. Öppna <a href="https://${cleanIp}/api" target="_blank" style="color:var(--accent);">https://${cleanIp}/api</a> i en ny flik och godkänn certifikatet först.`;
+      }
+    }
+
+    // HomeWizard P1 Polling (stöder både v1 HTTP och v2 HTTPS)
+    async function pollHomeWizard(ip, version, token) {
+      const cleanIp = ip.replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim();
+      const isV2 = version === 'v2';
+      const endpoint = isV2
+        ? `https://${cleanIp}/api/measurement`
+        : `http://${cleanIp}/api/v1/data`;
+
+      const fetchOptions = isV2 && token
+        ? { headers: { 'Authorization': `Bearer ${token.trim()}` } }
+        : {};
+
+      try {
+        const res = await fetch(endpoint, fetchOptions);
         if (!res.ok) throw new Error('HTTP-fel ' + res.status);
         const data = await res.json();
 
         hwActive = true;
-        liveWatts = Math.round(data.active_power_w || 0);
+        // Stöd både v2 fältnamn (power_w) och v1 fältnamn (active_power_w)
+        const currentPower = data.power_w !== undefined ? data.power_w : data.active_power_w;
+        const totalImport = data.energy_import_kwh !== undefined ? data.energy_import_kwh : data.total_power_import_kwh;
 
-        // Uppdatera UI till Live-läge
-        document.getElementById('powerCardTitle').textContent = 'Effektuttag just nu (HomeWizard P1)';
+        liveWatts = Math.round(currentPower || 0);
+
+        document.getElementById('powerCardTitle').textContent = `Effektuttag just nu (HomeWizard ${version.toUpperCase()})`;
         document.getElementById('liveWattDisplay').textContent = liveWatts.toLocaleString('sv-SE') + ' W';
-        document.getElementById('powerSubLabel').textContent = `Total import idag/totalt: ${(data.total_power_import_kwh || 0).toFixed(1)} kWh`;
+        document.getElementById('powerSubLabel').textContent = `Mätarställning import: ${(totalImport || 0).toFixed(1)} kWh`;
 
-        // Visa faser om tillgängligt
-        if (data.active_power_l1_w !== undefined) {
+        const l1 = data.power_l1_w !== undefined ? data.power_l1_w : data.active_power_l1_w;
+        const l2 = data.power_l2_w !== undefined ? data.power_l2_w : data.active_power_l2_w;
+        const l3 = data.power_l3_w !== undefined ? data.power_l3_w : data.active_power_l3_w;
+
+        if (l1 !== undefined) {
           document.getElementById('phasePills').style.display = 'flex';
-          document.getElementById('l1Pill').textContent = `L1: ${Math.round(data.active_power_l1_w)} W`;
-          document.getElementById('l2Pill').textContent = `L2: ${Math.round(data.active_power_l2_w)} W`;
-          document.getElementById('l3Pill').textContent = `L3: ${Math.round(data.active_power_l3_w)} W`;
+          document.getElementById('l1Pill').textContent = `L1: ${Math.round(l1)} W`;
+          document.getElementById('l2Pill').textContent = `L2: ${Math.round(l2)} W`;
+          document.getElementById('l3Pill').textContent = `L3: ${Math.round(l3)} W`;
         }
 
         document.getElementById('hwDot').className = 'status-dot';
-        document.getElementById('hwHeaderBadge').innerHTML = `<span class="status-dot"></span>HomeWizard: Live (${cleanIp})`;
-        document.getElementById('hwStatusText').textContent = 'Ansluten (Live)';
+        document.getElementById('hwHeaderBadge').innerHTML = `<span class="status-dot"></span>HomeWizard ${version.toUpperCase()}: Live`;
+        document.getElementById('hwStatusText').textContent = `Ansluten (${version.toUpperCase()})`;
         document.getElementById('hwStatusText').style.color = 'var(--green)';
+        document.getElementById('hwFeedback').style.color = 'var(--muted)';
         document.getElementById('hwFeedback').textContent = `Senast uppdaterad: ${new Date().toLocaleTimeString('sv-SE')}`;
 
         updateCalculator();
@@ -558,17 +641,19 @@
         document.getElementById('hwHeaderBadge').innerHTML = `<span class="status-dot error"></span>HomeWizard: Kunde ej nås`;
         document.getElementById('hwStatusText').textContent = 'Kunde ej ansluta';
         document.getElementById('hwStatusText').style.color = 'var(--red)';
-        document.getElementById('hwFeedback').textContent =
-          'Kunde inte nå mätaren. Kontrollera att du är på samma WiFi, att Local API är på, och att webbläsaren tillåter lokala HTTP-anrop.';
+        document.getElementById('hwFeedback').style.color = 'var(--red)';
+        document.getElementById('hwFeedback').innerHTML = isV2
+          ? `Kunde inte nå <code>https://${cleanIp}/api/measurement</code>. Kontrollera token och att du godkänt certifikatet på <a href="https://${cleanIp}/api" target="_blank" style="color:var(--accent);">https://${cleanIp}/api</a>.`
+          : 'Kunde inte nå mätaren via HTTP. Kontrollera IP, Local API i appen eller byt till API v2 (HTTPS).';
         document.getElementById('phasePills').style.display = 'none';
         document.getElementById('powerCardTitle').textContent = 'Effektuttag (Simulerat)';
       }
     }
 
-    function startHomeWizardPolling(ip) {
+    function startHomeWizardPolling(ip, version, token) {
       if (hwInterval) clearInterval(hwInterval);
-      pollHomeWizard(ip);
-      hwInterval = setInterval(() => pollHomeWizard(ip), 3000);
+      pollHomeWizard(ip, version, token);
+      hwInterval = setInterval(() => pollHomeWizard(ip, version, token), 3000);
     }
 
     // Ngenic API hämtning
@@ -577,7 +662,6 @@
       const cleanToken = token.trim();
 
       try {
-        // Hämtar användarens Tune-installationer
         const tunesRes = await fetch('https://app.ngenic.se/api/v3/tunes', {
           headers: { 'Authorization': `Bearer ${cleanToken}` }
         });
@@ -729,19 +813,28 @@
     document.getElementById('gridFeeInput').addEventListener('input', updateCalculator);
     document.getElementById('taxInput').addEventListener('input', updateCalculator);
     document.getElementById('markupInput').addEventListener('input', updateCalculator);
+    document.getElementById('hwVersionSelect').addEventListener('change', toggleHwVersionUI);
+    document.getElementById('pairHwBtn').addEventListener('click', pairHomeWizardV2);
 
     document.getElementById('saveHwBtn').addEventListener('click', () => {
       const ip = document.getElementById('hwIpInput').value.trim();
+      const ver = document.getElementById('hwVersionSelect').value;
+      const token = document.getElementById('hwTokenInput').value.trim();
       if (!ip) return;
+
       localStorage.setItem('elkollen_hw_ip', ip);
-      startHomeWizardPolling(ip);
+      localStorage.setItem('elkollen_hw_ver', ver);
+      localStorage.setItem('elkollen_hw_token', token);
+      startHomeWizardPolling(ip, ver, token);
     });
 
     document.getElementById('clearHwBtn').addEventListener('click', () => {
       localStorage.removeItem('elkollen_hw_ip');
+      localStorage.removeItem('elkollen_hw_token');
       if (hwInterval) clearInterval(hwInterval);
       hwActive = false;
       document.getElementById('hwIpInput').value = '';
+      document.getElementById('hwTokenInput').value = '';
       document.getElementById('hwDot').className = 'status-dot offline';
       document.getElementById('hwHeaderBadge').innerHTML = `<span class="status-dot offline"></span>HomeWizard: Ej ansluten`;
       document.getElementById('hwStatusText').textContent = 'Ej aktiv';
