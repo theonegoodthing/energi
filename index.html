@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elkollen SE3 – Priser & Kraftläge</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #38bdf8;
+            --green: #22c55e;
+            --yellow: #eab308;
+            --red: #ef4444;
+            --border: #334155;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: var(--bg-dark); color: var(--text-main); padding: 16px; line-height: 1.5; }
+        .container { max-width: 1100px; margin: 0 auto; }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 16px;
+        }
+
+        h1 { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+        .subtitle { font-size: 0.85rem; color: var(--text-muted); }
+
+        .controls { display: flex; gap: 8px; align-items: center; }
+        select, input, button {
+            background: var(--card-bg);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        button { cursor: pointer; background: var(--accent); color: #0f172a; font-weight: 600; border: none; }
+        button:hover { opacity: 0.9; }
+
+        .grid-top {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .card-title { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+        .big-value { font-size: 2rem; font-weight: 800; }
+        .sub-value { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
+
+        .chart-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            height: 360px;
+            position: relative;
+        }
+
+        .grid-bottom {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
+        .mix-bar {
+            display: flex;
+            height: 24px;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 12px 0;
+            background: #334155;
+        }
+        .mix-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem; margin-top: 12px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+        .calc-row { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; gap: 10px; }
+        .calc-row input { width: 120px; }
+
+        .hw-status { font-size: 0.8rem; margin-top: 8px; color: var(--yellow); }
+        a.ext-link { color: var(--accent); text-decoration: none; font-size: 0.85rem; display: inline-block; margin-top: 12px; }
+        a.ext-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div>
+            <h1>⚡ Elkollen SE3</h1>
+            <div class="subtitle" id="date-display">Laddar dagens datum...</div>
+        </div>
+        <div class="controls">
+            <select id="area-select" onchange="fetchPrices()">
+                <option value="SE3" selected>SE3 (Göteborg / Mellansverige)</option>
+                <option value="SE4">SE4 (Malmö / Sydsverige)</option>
+                <option value="SE2">SE2 (Sundsvall)</option>
+                <option value="SE1">SE1 (Luleå)</option>
+            </select>
+            <button onclick="fetchPrices()">Uppdatera</button>
+        </div>
+    </header>
+
+    <!-- NYCKELTAL -->
+    <div class="grid-top">
+        <div class="card">
+            <div class="card-title">Spotpris just nu</div>
+            <div class="big-value" id="current-spot">-- öre</div>
+            <div class="sub-value" id="current-hour">Timme: --:--</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Totalpris (inkl. nät, skatt & moms)</div>
+            <div class="big-value" id="current-total" style="color: var(--accent);">-- kr/kWh</div>
+            <div class="sub-value">Inkl. energiskatt & Ellevio-snitt</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Dygnets Lägsta / Högsta (Spot)</div>
+            <div class="big-value" style="font-size: 1.5rem;">
+                <span id="min-price" style="color: var(--green);">--</span> / 
+                <span id="max-price" style="color: var(--red);">--</span> <span style="font-size: 1rem;">öre</span>
+            </div>
+            <div class="sub-value" id="min-max-hours">Billigast kl -- | Dyrast kl --</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Realtidseffekt (HomeWizard)</div>
+            <div class="big-value" id="live-watt">-- W</div>
+            <div class="sub-value" id="live-cost-hr">Kostnad nu: -- kr/tim</div>
+        </div>
+    </div>
+
+    <!-- PRISGRAF -->
+    <div class="chart-container">
+        <canvas id="priceChart"></canvas>
+    </div>
+
+    <!-- KONTROLLRUMMET & KALKYLATOR -->
+    <div class="grid-bottom">
+        <div class="card">
+            <div class="card-title">Kontrollrummet & Kraftsystemet</div>
+            <p style="font-size: 0.9rem; color: var(--text-muted);">
+                Svenska kraftnäts driftläge och kraftbalans styr spotpriserna i SE3. Vid hög vindkraft sjunker priset; vid låg vind och kärnkraftsrevision ökar importbehovet.
+            </p>
+            <div class="mix-bar">
+                <div style="width: 38%; background: #3b82f6;" title="Vattenkraft"></div>
+                <div style="width: 32%; background: #a855f7;" title="Kärnkraft"></div>
+                <div style="width: 22%; background: #22c55e;" title="Vindkraft"></div>
+                <div style="width: 8%; background: #f59e0b;" title="Kraftvärme/Övrigt"></div>
+            </div>
+            <div class="mix-legend">
+                <div class="legend-item"><span class="dot" style="background:#3b82f6;"></span> Vattenkraft (Bas/Regler)</div>
+                <div class="legend-item"><span class="dot" style="background:#a855f7;"></span> Kärnkraft (Baskraft)</div>
+                <div class="legend-item"><span class="dot" style="background:#22c55e;"></span> Vindkraft (Prispressare)</div>
+                <div class="legend-item"><span class="dot" style="background:#f59e0b;"></span> Kraftvärme & Sol</div>
+            </div>
+            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                <a href="https://www.svk.se/om-kraftsystemet/kontrollrummet/" target="_blank" class="ext-link">↗ Öppna SvK Kontrollrummet</a>
+                <a href="https://app.electricitymaps.com/zone/SE-SE3" target="_blank" class="ext-link">↗ Electricity Maps (SE3)</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Vad kostar det att köra just nu?</div>
+            <div class="calc-row">
+                <span>Effekt på apparat (Watt):</span>
+                <input type="number" id="test-watt" value="2000" oninput="updateCalculator()">
+            </div>
+            <div class="calc-row">
+                <span>Ellevio överföring + skatt (kr/kWh):</span>
+                <input type="number" id="grid-fee" value="0.88" step="0.01" oninput="fetchPrices()">
+            </div>
+            <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border);">
+                <div style="font-size: 1.1rem; font-weight: 700;">
+                    Kostnad just nu: <span id="calc-result" style="color: var(--green);">-- kr/timme</span>
+                </div>
+                <div class="sub-value">Baserat på aktuell timmes spotpris + nätavgift + 25% moms.</div>
+            </div>
+
+            <!-- Lokal HomeWizard-koppling -->
+            <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border);">
+                <div class="card-title" style="margin-bottom: 4px;">Lokal HomeWizard P1 (Valfritt)</div>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="hw-ip" placeholder="t.ex. 192.168.1.50" style="flex: 1;">
+                    <button onclick="connectHomeWizard()">Koppla</button>
+                </div>
+                <div class="hw-status" id="hw-msg">Körs via GitHub (HTTPS) – lokal P1 kräver lokalt nätverk/HTTP.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let chartInstance = null;
+    let currentTotalSekPerKwh = 0;
+    let hwInterval = null;
+
+    function pad(n) { return n < 10 ? '0' + n : n; }
+
+    async function fetchPrices() {
+        const area = document.getElementById('area-select').value;
+        const gridAndTax = parseFloat(document.getElementById('grid-fee').value) || 0.88;
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = pad(now.getMonth() + 1);
+        const day = pad(now.getDate());
+        const currentHour = now.getHours();
+
+        document.getElementById('date-display').innerText = `Datum: ${year}-${month}-${day} | Elområde: ${area}`;
+
+        const url = `https://www.elprisetjustnu.se/api/v1/prices/${year}/${month}-${day}_${area}.json`;
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Kunde inte hämta priser');
+            const data = await response.json();
+
+            // Gruppera per timme (hanterar både tim- och kvartsdata)
+            const hourlyData = [];
+            for (let h = 0; h < 24; h++) {
+                const entries = data.filter(d => new Date(d.time_start).getHours() === h);
+                if (entries.length > 0) {
+                    const avgSek = entries.reduce((sum, item) => sum + item.SEK_per_kWh, 0) / entries.length;
+                    hourlyData.push({ hour: h, spotSek: avgSek });
+                }
+            }
+
+            // Aktuell timme
+            const active = hourlyData.find(d => d.hour === currentHour) || hourlyData[0];
+            const spotOre = (active.spotSek * 100).toFixed(1);
+            // Totalpris inkl. moms (25%)
+            currentTotalSekPerKwh = (active.spotSek + gridAndTax) * 1.25;
+
+            document.getElementById('current-spot').innerText = `${spotOre} öre`;
+            document.getElementById('current-hour').innerText = `Gäller kl ${pad(currentHour)}:00 – ${pad(currentHour + 1)}:00`;
+            document.getElementById('current-total').innerText = `${currentTotalSekPerKwh.toFixed(2)} kr/kWh`;
+
+            // Min & Max
+            let minObj = hourlyData[0];
+            let maxObj = hourlyData[0];
+            hourlyData.forEach(item => {
+                if (item.spotSek < minObj.spotSek) minObj = item;
+                if (item.spotSek > maxObj.spotSek) maxObj = item;
+            });
+
+            document.getElementById('min-price').innerText = (minObj.spotSek * 100).toFixed(0);
+            document.getElementById('max-price').innerText = (maxObj.spotSek * 100).toFixed(0);
+            document.getElementById('min-max-hours').innerText = `Billigast kl ${pad(minObj.hour)}:00 | Dyrast kl ${pad(maxObj.hour)}:00`;
+
+            updateCalculator();
+            renderChart(hourlyData, currentHour, gridAndTax);
+
+        } catch (err) {
+            console.error(err);
+            document.getElementById('current-spot').innerText = "Fel vid hämtning";
+        }
+    }
+
+    function updateCalculator() {
+        const watts = parseFloat(document.getElementById('test-watt').value) || 0;
+        const costPerHour = (watts / 1000) * currentTotalSekPerKwh;
+        document.getElementById('calc-result').innerText = `${costPerHour.toFixed(2)} kr/timme`;
+    }
+
+    function renderChart(hourlyData, currentHour, gridAndTax) {
+        const ctx = document.getElementById('priceChart').getContext('2d');
+        const labels = hourlyData.map(d => `${pad(d.hour)}:00`);
+        const spotValues = hourlyData.map(d => (d.spotSek * 100).toFixed(1));
+        const totalValues = hourlyData.map(d => (((d.spotSek + gridAndTax) * 1.25) * 100).toFixed(1));
+
+        const barColors = hourlyData.map(d => {
+            if (d.hour === currentHour) return '#38bdf8';
+            const ore = d.spotSek * 100;
+            if (ore < 50) return '#22c55e';
+            if (ore < 120) return '#eab308';
+            return '#ef4444';
+        });
+
+        if (chartInstance) chartInstance.destroy();
+
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Spotpris (öre/kWh exkl. moms)',
+                        data: spotValues,
+                        backgroundColor: barColors,
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'Totalpris inkl. nät, skatt & moms (öre/kWh)',
+                        data: totalValues,
+                        type: 'line',
+                        borderColor: '#f8fafc',
+                        borderWidth: 2,
+                        pointRadius: 2,
+                        tension: 0.3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: '#f8fafc' } }
+                },
+                scales: {
+                    x: { ticks: { color: '#94a3b8' }, grid: { display: false } },
+                    y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+                }
+            }
+        });
+    }
+
+    function connectHomeWizard() {
+        const ip = document.getElementById('hw-ip').value.trim();
+        if (!ip) return;
+        localStorage.setItem('hw_ip', ip);
+        if (hwInterval) clearInterval(hwInterval);
+
+        const poll = async () => {
+            try {
+                const res = await fetch(`http://${ip}/api/v1/data`);
+                const data = await res.json();
+                const watts = data.active_power_w;
+                document.getElementById('live-watt').innerText = `${watts} W`;
+                const krHr = (watts / 1000) * currentTotalSekPerKwh;
+                document.getElementById('live-cost-hr').innerText = `Kostnad nu: ${krHr.toFixed(2)} kr/tim`;
+                document.getElementById('hw-msg').innerText = `Ansluten till ${ip} (Live)`;
+                document.getElementById('hw-msg').style.color = '#22c55e';
+            } catch (e) {
+                document.getElementById('hw-msg').innerText = `Blockerad av webbläsaren (HTTPS -> HTTP) eller fel IP.`;
+                document.getElementById('hw-msg').style.color = '#ef4444';
+            }
+        };
+
+        poll();
+        hwInterval = setInterval(poll, 3000);
+    }
+
+    // Starta vid sidladdning
+    window.onload = () => {
+        const savedIp = localStorage.getItem('hw_ip');
+        if (savedIp) document.getElementById('hw-ip').value = savedIp;
+        fetchPrices();
+    };
+</script>
+
+</body>
+</html>
