@@ -565,4 +565,211 @@
       }
     }
 
-    function start
+    function startHomeWizardPolling(ip) {
+      if (hwInterval) clearInterval(hwInterval);
+      pollHomeWizard(ip);
+      hwInterval = setInterval(() => pollHomeWizard(ip), 3000);
+    }
+
+    // Ngenic API hämtning
+    async function fetchNgenicData(token) {
+      if (!token) return;
+      const cleanToken = token.trim();
+
+      try {
+        // Hämtar användarens Tune-installationer
+        const tunesRes = await fetch('https://app.ngenic.se/api/v3/tunes', {
+          headers: { 'Authorization': `Bearer ${cleanToken}` }
+        });
+
+        if (!tunesRes.ok) throw new Error('Ogiltig token eller nätverksfel');
+        const tunes = await tunesRes.json();
+
+        if (!tunes || tunes.length === 0) {
+          document.getElementById('ngenicDataBox').textContent = 'Inga Ngenic Tune-enheter hittades på kontot.';
+          return;
+        }
+
+        const tuneUuid = tunes[0].tuneUuid;
+        const roomsRes = await fetch(`https://app.ngenic.se/api/v3/tunes/${tuneUuid}/rooms`, {
+          headers: { 'Authorization': `Bearer ${cleanToken}` }
+        });
+
+        const rooms = await roomsRes.json();
+        const activeRoom = rooms.find(r => r.activeControl) || rooms[0];
+
+        document.getElementById('ngenicStatusText').textContent = 'Ansluten';
+        document.getElementById('ngenicStatusText').style.color = 'var(--green)';
+
+        if (activeRoom) {
+          const targetTemp = activeRoom.targetTemperature;
+          document.getElementById('ngenicDataBox').innerHTML =
+            `<strong>${tunes[0].name || 'Ngenic Tune'}:</strong> Måltemperatur i ${activeRoom.name} är <strong>${targetTemp} °C</strong>.`;
+          document.getElementById('ngenicMiniStatus').textContent =
+            `Ngenic (${activeRoom.name}): Mål ${targetTemp} °C`;
+        }
+      } catch (err) {
+        document.getElementById('ngenicStatusText').textContent = 'Fel vid anslutning';
+        document.getElementById('ngenicStatusText').style.color = 'var(--red)';
+        document.getElementById('ngenicDataBox').textContent =
+          'Kunde inte hämta data från Ngenic. Kontrollera din API-token.';
+      }
+    }
+
+    // Hämta elpriser SE3
+    async function fetchPrices() {
+      const now = new Date();
+      const { year, month, day } = formatDateParts(now);
+      const currentHour = now.getHours();
+
+      document.getElementById('dateDisplay').textContent =
+        now.toLocaleDateString('sv-SE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+      const url = `https://www.elprisetjustnu.se/api/v1/prices/${year}/${month}-${day}_SE3.json`;
+
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Kunde inte hämta priser');
+        const data = await res.json();
+
+        const labels = [];
+        const pricesOre = [];
+        const barColors = [];
+
+        let minPrice = Infinity;
+        let maxPrice = -Infinity;
+        let sumPrice = 0;
+
+        data.forEach(entry => {
+          const entryDate = new Date(entry.time_start);
+          const hour = entryDate.getHours();
+          const ore = Number((entry.SEK_per_kWh * 100).toFixed(1));
+
+          labels.push(`${String(hour).padStart(2, '0')}:00`);
+          pricesOre.push(ore);
+
+          if (ore < minPrice) minPrice = ore;
+          if (ore > maxPrice) maxPrice = ore;
+          sumPrice += ore;
+
+          if (hour === currentHour) {
+            currentSpotOre = ore;
+            document.getElementById('currentSpot').textContent = `${ore.toFixed(1).replace('.', ',')} öre`;
+            document.getElementById('currentHourLabel').textContent =
+              `Gäller kl. ${String(hour).padStart(2, '0')}:00–${String((hour + 1) % 24).padStart(2, '0')}:00`;
+            barColors.push('#38bdf8');
+          } else if (ore < 40) {
+            barColors.push('rgba(34, 197, 94, 0.7)');
+          } else if (ore > 120) {
+            barColors.push('rgba(239, 68, 68, 0.7)');
+          } else {
+            barColors.push('rgba(148, 163, 184, 0.45)');
+          }
+        });
+
+        const avgPrice = (sumPrice / data.length).toFixed(1);
+        document.getElementById('minMaxSpot').textContent =
+          `${minPrice.toFixed(0)} / ${maxPrice.toFixed(0)} öre`;
+        document.getElementById('avgSpot').textContent =
+          `Snitt: ${avgPrice.replace('.', ',')} öre/kWh`;
+
+        updateCalculator();
+        renderChart(labels, pricesOre, barColors);
+      } catch (err) {
+        document.getElementById('currentSpot').textContent = 'Fel vid hämtning';
+        console.error(err);
+      }
+    }
+
+    function renderChart(labels, values, colors) {
+      const ctx = document.getElementById('priceChart').getContext('2d');
+      if (priceChartInstance) priceChartInstance.destroy();
+
+      priceChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Spotpris SE3 (öre/kWh)',
+            data: values,
+            backgroundColor: colors,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.parsed.y} öre/kWh (exkl. moms)`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: '#94a3b8' }
+            },
+            y: {
+              grid: { color: '#334155' },
+              ticks: {
+                color: '#94a3b8',
+                callback: (val) => val + ' öre'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Event listeners
+    document.getElementById('wattSlider').addEventListener('input', updateCalculator);
+    document.getElementById('gridFeeInput').addEventListener('input', updateCalculator);
+    document.getElementById('taxInput').addEventListener('input', updateCalculator);
+    document.getElementById('markupInput').addEventListener('input', updateCalculator);
+
+    document.getElementById('saveHwBtn').addEventListener('click', () => {
+      const ip = document.getElementById('hwIpInput').value.trim();
+      if (!ip) return;
+      localStorage.setItem('elkollen_hw_ip', ip);
+      startHomeWizardPolling(ip);
+    });
+
+    document.getElementById('clearHwBtn').addEventListener('click', () => {
+      localStorage.removeItem('elkollen_hw_ip');
+      if (hwInterval) clearInterval(hwInterval);
+      hwActive = false;
+      document.getElementById('hwIpInput').value = '';
+      document.getElementById('hwDot').className = 'status-dot offline';
+      document.getElementById('hwHeaderBadge').innerHTML = `<span class="status-dot offline"></span>HomeWizard: Ej ansluten`;
+      document.getElementById('hwStatusText').textContent = 'Ej aktiv';
+      document.getElementById('hwStatusText').style.color = 'var(--muted)';
+      document.getElementById('hwFeedback').textContent = '';
+      document.getElementById('phasePills').style.display = 'none';
+      document.getElementById('powerCardTitle').textContent = 'Effektuttag (Simulerat)';
+      updateCalculator();
+    });
+
+    document.getElementById('saveNgenicBtn').addEventListener('click', () => {
+      const token = document.getElementById('ngenicTokenInput').value.trim();
+      if (!token) return;
+      localStorage.setItem('elkollen_ngenic_token', token);
+      fetchNgenicData(token);
+    });
+
+    document.getElementById('clearNgenicBtn').addEventListener('click', () => {
+      localStorage.removeItem('elkollen_ngenic_token');
+      document.getElementById('ngenicTokenInput').value = '';
+      document.getElementById('ngenicStatusText').textContent = 'Ej aktiv';
+      document.getElementById('ngenicStatusText').style.color = 'var(--muted)';
+      document.getElementById('ngenicDataBox').textContent = 'Visar innetemperatur, börvärde och aktiv elprisstyrning när den är ansluten.';
+      document.getElementById('ngenicMiniStatus').textContent = 'Ngenic: Ej ansluten';
+    });
+
+    loadSavedSettings();
+    fetchPrices();
+  </script>
+</body>
+</html>
