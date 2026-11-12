@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Elkollen SE3 – Priser, Kraftläge & Realtid</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --card-border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --green: #22c55e;
+      --yellow: #eab308;
+      --red: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 20px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 20px;
+    }
+
+    .card-title {
+      color: var(--muted);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+
+    .big-value {
+      font-size: 2rem;
+      font-weight: 700;
+    }
+
+    .sub-value {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+
+    .chart-container {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .chart-wrapper {
+      position: relative;
+      height: 300px;
+      width: 100%;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .mix-bar {
+      display: flex;
+      height: 22px;
+      border-radius: 8px;
+      overflow: hidden;
+      margin: 16px 0;
+      background: #0f172a;
+    }
+
+    .mix-legend {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      font-size: 0.9rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(15, 23, 42, 0.5);
+      padding: 8px 12px;
+      border-radius: 8px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 8px;
+    }
+
+    .slider-box {
+      margin-top: 14px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      margin: 12px 0;
+      accent-color: var(--accent);
+    }
+
+    .settings-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .settings-row label, .input-group label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      flex: 1;
+      min-width: 120px;
+    }
+
+    input[type="number"], input[type="text"], input[type="password"] {
+      background: var(--bg);
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      width: 100%;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .btn {
+      background: var(--accent);
+      color: #0f172a;
+      border: none;
+      padding: 9px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+    }
+
+    .btn-secondary {
+      background: rgba(148, 163, 184, 0.15);
+      color: var(--text);
+      border: 1px solid var(--card-border);
+    }
+
+    .status-dot {
+      height: 8px;
+      width: 8px;
+      background-color: var(--green);
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 6px;
+    }
+
+    .status-dot.offline {
+      background-color: var(--muted);
+    }
+
+    .status-dot.error {
+      background-color: var(--red);
+    }
+
+    .phase-pills {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--card-border);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      color: var(--text);
+    }
+
+    .info-box {
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 10px;
+      padding: 14px;
+      margin-top: 16px;
+      font-size: 0.85rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .info-box strong {
+      color: var(--text);
+    }
+
+    a.ext-link {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.85rem;
+      display: inline-block;
+      margin-top: 12px;
+    }
+
+    a.ext-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div>
+      <h1>⚡ Elkollen <span class="badge">SE3 • Göteborg</span></h1>
+      <div class="sub-value" id="dateDisplay">Laddar datum...</div>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <span class="badge"><span class="status-dot"></span>Spotpris (Bixia / Nord Pool)</span>
+      <span class="badge" id="hwHeaderBadge"><span class="status-dot offline" id="hwDot"></span>HomeWizard: Ej ansluten</span>
+    </div>
+  </header>
+
+  <!-- Nyckeltal -->
+  <div class="grid">
+    <div class="card">
+      <div class="card-title">Spotpris just nu (exkl. moms/nät)</div>
+      <div class="big-value" id="currentSpot">-- öre</div>
+      <div class="sub-value" id="currentHourLabel">Timme: --:--</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Totalpris inkl. Ellevio & Skatt</div>
+      <div class="big-value" id="currentTotal" style="color: var(--accent);">-- kr/kWh</div>
+      <div class="sub-value">Inkl. energiskatt, överföring & 25% moms</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" id="powerCardTitle">Effektuttag (Simulerat)</div>
+      <div class="big-value" id="liveWattDisplay">2 000 W</div>
+      <div class="phase-pills" id="phasePills" style="display:none;">
+        <span class="pill" id="l1Pill">L1: -- W</span>
+        <span class="pill" id="l2Pill">L2: -- W</span>
+        <span class="pill" id="l3Pill">L3: -- W</span>
+      </div>
+      <div class="sub-value" id="powerSubLabel">Använd reglaget eller koppla HomeWizard nedan</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Kostnadstakt just nu</div>
+      <div class="big-value" id="liveCostPerHour" style="color: var(--green);">-- kr/h</div>
+      <div class="sub-value" id="ngenicMiniStatus">Ngenic: Ej ansluten</div>
+    </div>
+  </div>
+
+  <!-- Prisgraf -->
+  <div class="chart-container">
+    <div class="card-title" style="margin-bottom: 14px;">Dagens elpriser per timme – SE3 (öre/kWh exkl. moms)</div>
+    <div class="chart-wrapper">
+      <canvas id="priceChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Kontrollrummet & Kalkylator -->
+  <div class="two-col">
+    <!-- Kontrollrummet / Kraftläget -->
+    <div class="card">
+      <div class="card-title">Kontrollrummet – Kraftläget i Sverige (SE1–SE4)</div>
+      <div class="sub-value">Aktuell produktionsmix och balans i stamnätet</div>
+
+      <div class="mix-bar" id="mixBar">
+        <div style="width: 40%; background: #38bdf8;" title="Vattenkraft"></div>
+        <div style="width: 28%; background: #a855f7;" title="Kärnkraft"></div>
+        <div style="width: 24%; background: #22c55e;" title="Vindkraft"></div>
+        <div style="width: 8%; background: #f59e0b;" title="Kraftvärme / Övrigt"></div>
+      </div>
+
+      <div class="mix-legend">
+        <div class="legend-item">
+          <span><span class="dot" style="background:#38bdf8;"></span>Vattenkraft</span>
+          <strong>~40 %</strong>
+        </div>
+        <div class="legend-item">
+          <span><span class="dot" style="background:#a855f7;"></span>Kärnkraft</span>
+          <strong>~28 %</strong>
+        </div>
+        <div class="legend-item">
+          <span><span class="dot" style="background:#22c55e;"></span>Vindkraft</span>
+          <strong>~24 %</strong>
+        </div>
+        <div class="legend-item">
+          <span><span class="dot" style="background:#f59e0b;"></span>Kraftvärme</span>
+          <strong>~8 %</strong>
+        </div>
+      </div>
+
+      <div class="sub-value" style="margin-top: 14px;">
+        <strong>Dygnets lägsta / högsta (Spot):</strong> <span id="minMaxSpot">-- / --</span> (<span id="avgSpot">Snitt: --</span>)
+      </div>
+      <a class="ext-link" href="https://www.svk.se/om-kraftsystemet/kontrollrummet/" target="_blank" rel="noopener">
+        ↗ Öppna Svenska kraftnäts Kontrollrummet i realtid
+      </a>
+    </div>
+
+    <!-- Realtidssimulator & Egen taxa -->
+    <div class="card">
+      <div class="card-title">Taxa & Manuell Effekt-simulator</div>
+      <div class="sub-value">Justera dina fasta avgifter för Ellevio & Bixia (sparas lokalt)</div>
+
+      <div class="slider-box" id="simulatorBox">
+        <div style="display:flex; justify-content:space-between; font-weight:600; font-size:0.9rem;">
+          <span>Simulerat effektuttag (när HomeWizard är offline):</span>
+          <span id="wattDisplay" style="color: var(--accent);">2 000 W</span>
+        </div>
+        <input type="range" id="wattSlider" min="100" max="15000" step="100" value="2000" />
+      </div>
+
+      <div class="settings-row">
+        <label>
+          Ellevio överföring (öre ex. moms)
+          <input type="number" id="gridFeeInput" value="28.0" step="0.5" />
+        </label>
+        <label>
+          Energiskatt (öre ex. moms)
+          <input type="number" id="taxInput" value="43.9" step="0.1" />
+        </label>
+        <label>
+          Bixia påslag (öre ex. moms)
+          <input type="number" id="markupInput" value="4.5" step="0.5" />
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOKAL ANSLUTNING: HOMEWIZARD & NGENIC -->
+  <div class="card" style="margin-bottom: 30px;">
+    <div class="card-title">🏠 Lokal Hårdvara & Realtidsanslutning (Hemma-läge)</div>
+    <div class="sub-value">
+      Fyll i dina lokala uppgifter nedan. All information sparas enbart i din egen webbläsare (localStorage) och skickas aldrig till GitHub.
+    </div>
+
+    <div class="two-col" style="margin-top: 18px; margin-bottom: 0;">
+      <!-- HomeWizard P1 -->
+      <div class="input-group" style="background: rgba(15,23,42,0.45); padding: 16px; border-radius: 10px; border: 1px solid var(--card-border);">
+        <div style="font-weight: 600; margin-bottom: 10px; display:flex; justify-content:space-between;">
+          <span>1. HomeWizard P1-mätare (Lokalt IP)</span>
+          <span id="hwStatusText" style="font-size:0.8rem; color:var(--muted);">Ej aktiv</span>
+        </div>
+        <label>
+          Lokalt IP-adress på hemnätverket (t.ex. 192.168.1.45)
+          <input type="text" id="hwIpInput" placeholder="192.168.1.xxx" />
+        </label>
+        <div style="display:flex; gap:8px; margin-top: 12px;">
+          <button class="btn" id="saveHwBtn">Anslut & Spara IP</button>
+          <button class="btn btn-secondary" id="clearHwBtn">Koppla från</button>
+        </div>
+        <div class="sub-value" id="hwFeedback" style="margin-top: 8px;"></div>
+      </div>
+
+      <!-- Ngenic Tune -->
+      <div class="input-group" style="background: rgba(15,23,42,0.45); padding: 16px; border-radius: 10px; border: 1px solid var(--card-border);">
+        <div style="font-weight: 600; margin-bottom: 10px; display:flex; justify-content:space-between;">
+          <span>2. Ngenic Tune (Värmepumpsstyrning)</span>
+          <span id="ngenicStatusText" style="font-size:0.8rem; color:var(--muted);">Ej aktiv</span>
+        </div>
+        <label>
+          Ngenic Personal Access Token (API-nyckel)
+          <input type="password" id="ngenicTokenInput" placeholder="Klistra in din Ngenic Bearer-token" />
+        </label>
+        <div style="display:flex; gap:8px; margin-top: 12px;">
+          <button class="btn" id="saveNgenicBtn">Anslut Ngenic</button>
+          <button class="btn btn-secondary" id="clearNgenicBtn">Rensa</button>
+        </div>
+        <div class="sub-value" id="ngenicDataBox" style="margin-top: 8px;">
+          Visar innetemperatur, börvärde och aktiv elprisstyrning när den är ansluten.
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <strong>Så här får du igång realtidsdata hemma:</strong><br/>
+      • <strong>HomeWizard P1:</strong> Öppna HomeWizard Energy-appen → <em>Inställningar</em> → <em>Mätare</em> → välj din P1-mätare och slå på <strong>Lokalt API (Local API)</strong>. IP-adressen hittar du i samma meny eller i din router.<br/>
+      • <strong>Viktigt vid körning via GitHub Pages (HTTPS):</strong> Eftersom GitHub använder krypterad <code>https://</code> och HomeWizard svarar lokalt över okrypterad <code>http://</code> kan webbläsaren blockera anropet av säkerhetsskäl ("Mixed Content"). Lös det genom att antingen tillåta <em>Osäkert innehåll (Insecure content)</em> för sidan i webbläsarens webbplatsinställningar, eller ladda ner denna <code>index.html</code> och öppna den direkt från datorn/mobilen hemma.<br/>
+      • <strong>Ngenic API:</strong> Logga in på <em>developer.ngenic.se</em> med ditt Ngenic-konto och skapa en personlig API-token för att hämta temperaturer och styrstatus.
+    </div>
+  </div>
+
+  <script>
+    let currentSpotOre = 0;
+    let liveWatts = 2000;
+    let hwActive = false;
+    let hwInterval = null;
+    let priceChartInstance = null;
+
+    // Ladda sparade inställningar från localStorage
+    function loadSavedSettings() {
+      const savedGrid = localStorage.getItem('elkollen_grid');
+      const savedTax = localStorage.getItem('elkollen_tax');
+      const savedMarkup = localStorage.getItem('elkollen_markup');
+      const savedHwIp = localStorage.getItem('elkollen_hw_ip');
+      const savedNgenicToken = localStorage.getItem('elkollen_ngenic_token');
+
+      if (savedGrid) document.getElementById('gridFeeInput').value = savedGrid;
+      if (savedTax) document.getElementById('taxInput').value = savedTax;
+      if (savedMarkup) document.getElementById('markupInput').value = savedMarkup;
+
+      if (savedHwIp) {
+        document.getElementById('hwIpInput').value = savedHwIp;
+        startHomeWizardPolling(savedHwIp);
+      }
+
+      if (savedNgenicToken) {
+        document.getElementById('ngenicTokenInput').value = savedNgenicToken;
+        fetchNgenicData(savedNgenicToken);
+      }
+    }
+
+    function saveFeeSettings() {
+      localStorage.setItem('elkollen_grid', document.getElementById('gridFeeInput').value);
+      localStorage.setItem('elkollen_tax', document.getElementById('taxInput').value);
+      localStorage.setItem('elkollen_markup', document.getElementById('markupInput').value);
+    }
+
+    function formatDateParts(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return { year, month, day };
+    }
+
+    function updateCalculator() {
+      saveFeeSettings();
+
+      if (!hwActive) {
+        liveWatts = Number(document.getElementById('wattSlider').value);
+        document.getElementById('wattDisplay').textContent = liveWatts.toLocaleString('sv-SE') + ' W';
+        document.getElementById('liveWattDisplay').textContent = liveWatts.toLocaleString('sv-SE') + ' W';
+      }
+
+      const gridFee = Number(document.getElementById('gridFeeInput').value) || 0;
+      const tax = Number(document.getElementById('taxInput').value) || 0;
+      const markup = Number(document.getElementById('markupInput').value) || 0;
+
+      // Totalpris i kr/kWh inkl 25% moms
+      const totalOreExVat = currentSpotOre + gridFee + tax + markup;
+      const totalSekIncVat = (totalOreExVat / 100) * 1.25;
+
+      document.getElementById('currentTotal').textContent = totalSekIncVat.toFixed(2).replace('.', ',') + ' kr/kWh';
+
+      // Kostnad per timme vid aktuellt effektuttag
+      const kw = liveWatts / 1000;
+      const costPerHour = kw * totalSekIncVat;
+      document.getElementById('liveCostPerHour').textContent = costPerHour.toFixed(2).replace('.', ',') + ' kr/h';
+    }
+
+    // HomeWizard P1 Local API Polling
+    async function pollHomeWizard(ip) {
+      const cleanIp = ip.replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim();
+      const endpoint = `http://${cleanIp}/api/v1/data`;
+
+      try {
+        const res = await fetch(endpoint);
+        if (!res.ok) throw new Error('HTTP-fel ' + res.status);
+        const data = await res.json();
+
+        hwActive = true;
+        liveWatts = Math.round(data.active_power_w || 0);
+
+        // Uppdatera UI till Live-läge
+        document.getElementById('powerCardTitle').textContent = 'Effektuttag just nu (HomeWizard P1)';
+        document.getElementById('liveWattDisplay').textContent = liveWatts.toLocaleString('sv-SE') + ' W';
+        document.getElementById('powerSubLabel').textContent = `Total import idag/totalt: ${(data.total_power_import_kwh || 0).toFixed(1)} kWh`;
+
+        // Visa faser om tillgängligt
+        if (data.active_power_l1_w !== undefined) {
+          document.getElementById('phasePills').style.display = 'flex';
+          document.getElementById('l1Pill').textContent = `L1: ${Math.round(data.active_power_l1_w)} W`;
+          document.getElementById('l2Pill').textContent = `L2: ${Math.round(data.active_power_l2_w)} W`;
+          document.getElementById('l3Pill').textContent = `L3: ${Math.round(data.active_power_l3_w)} W`;
+        }
+
+        document.getElementById('hwDot').className = 'status-dot';
+        document.getElementById('hwHeaderBadge').innerHTML = `<span class="status-dot"></span>HomeWizard: Live (${cleanIp})`;
+        document.getElementById('hwStatusText').textContent = 'Ansluten (Live)';
+        document.getElementById('hwStatusText').style.color = 'var(--green)';
+        document.getElementById('hwFeedback').textContent = `Senast uppdaterad: ${new Date().toLocaleTimeString('sv-SE')}`;
+
+        updateCalculator();
+      } catch (err) {
+        hwActive = false;
+        document.getElementById('hwDot').className = 'status-dot error';
+        document.getElementById('hwHeaderBadge').innerHTML = `<span class="status-dot error"></span>HomeWizard: Kunde ej nås`;
+        document.getElementById('hwStatusText').textContent = 'Kunde ej ansluta';
+        document.getElementById('hwStatusText').style.color = 'var(--red)';
+        document.getElementById('hwFeedback').textContent =
+          'Kunde inte nå mätaren. Kontrollera att du är på samma WiFi, att Local API är på, och att webbläsaren tillåter lokala HTTP-anrop.';
+        document.getElementById('phasePills').style.display = 'none';
+        document.getElementById('powerCardTitle').textContent = 'Effektuttag (Simulerat)';
+      }
+    }
+
+    function start
