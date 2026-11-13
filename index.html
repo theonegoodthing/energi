@@ -305,6 +305,13 @@
       margin-top: 2px;
     }
 
+    .month-breakdown-pills {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
     .month-controls {
       margin-top: 16px;
       padding-top: 14px;
@@ -368,7 +375,6 @@
 
   <!-- Nyckeltal: 8 kort i ett jämnt 4x2-rutnät -->
   <div class="grid">
-    <!-- Rad 1, Kort 1: Effektuttag just nu -->
     <div class="card">
       <div class="card-title" id="powerCardTitle">Effektuttag just nu</div>
       <div class="big-value" id="liveWattDisplay">-- W</div>
@@ -380,49 +386,42 @@
       <div class="sub-value" id="powerSubLabel">Beräknat utifrån temperatur & vind</div>
     </div>
 
-    <!-- Rad 1, Kort 2: Kostnad just nu -->
     <div class="card">
       <div class="card-title" id="costNowTitle">Kostnad just nu</div>
       <div class="big-value" id="liveCostPerHour" style="color: var(--green);">-- kr/h</div>
       <div class="sub-value" id="liveTickIndicator">Baserat på aktuellt timpris</div>
     </div>
 
-    <!-- Rad 1, Kort 3: Dagens förbrukning -->
     <div class="card">
       <div class="card-title">Dagens förbrukning</div>
       <div class="big-value" id="todayKwhDisplay" style="color: var(--accent);">0,00 kWh</div>
       <div class="sub-value" id="todayKwhSub">Väntar på HomeWizard P1...</div>
     </div>
 
-    <!-- Rad 1, Kort 4: Dagens kostnad -->
     <div class="card">
       <div class="card-title">Dagens kostnad</div>
       <div class="big-value" id="todayCostDisplay" style="color: var(--yellow);">0,00 kr</div>
       <div class="sub-value" id="todayCostSub">Ackumulerat inkl. elnät, skatt & moms</div>
     </div>
 
-    <!-- Rad 2, Kort 5: Spotpris just nu -->
     <div class="card">
       <div class="card-title">Spotpris just nu (exkl. moms)</div>
       <div class="big-value" id="currentSpot">-- öre</div>
       <div class="sub-value" id="currentHourLabel">Timme: --:--</div>
     </div>
 
-    <!-- Rad 2, Kort 6: Totalpris per kWh -->
     <div class="card">
       <div class="card-title">Totalpris inkl. Ellevio & Skatt</div>
       <div class="big-value" id="currentTotal">-- kr/kWh</div>
       <div class="sub-value" id="ngenicMiniStatus">Ngenic: Ej ansluten</div>
     </div>
 
-    <!-- Rad 2, Kort 7: Månadens total hittills -->
     <div class="card">
       <div class="card-title" id="monthCardTitle">Månaden hittills</div>
       <div class="big-value" id="monthTotalCostCard" style="color: var(--purple);">0,00 kr</div>
       <div class="sub-value" id="monthTotalSubCard">0,0 kWh • 0 sparade dagar</div>
     </div>
 
-    <!-- Rad 2, Kort 8: Dagens estimat (Väder + Vind + Elpris) -->
     <div class="card">
       <div class="card-title">Dagens estimat (Väder & Pris)</div>
       <div class="big-value" id="estDayCostCard" style="color: var(--accent);">-- kr</div>
@@ -440,7 +439,7 @@
     </div>
   </div>
 
-  <!-- Vädergraf Donsö / Vinga (Temperatur + Vind m/s) -->
+  <!-- Vädergraf Donsö / Vinga -->
   <div class="chart-container">
     <div class="chart-header">
       <div class="card-title" style="margin-bottom: 0;">Utomhustemperatur (°C) & Vind (m/s) per timme – Donsö / Södra skärgården</div>
@@ -451,17 +450,26 @@
     </div>
   </div>
 
-  <!-- Månadsöversikt dag-för-dag -->
+  <!-- Månadsöversikt dag-för-dag med uppdelning på Elhandel, Elnät, Energiskatt och Moms -->
   <div class="chart-container">
     <div class="chart-header">
-      <div class="card-title" style="margin-bottom: 0;" id="monthChartHeading">Månadens elkostnad dag-för-dag (kr inkl. elnät, skatt & moms)</div>
+      <div class="card-title" style="margin-bottom: 0;" id="monthChartHeading">Månadens elkostnad dag-för-dag – uppdelat per kostnadsslag</div>
       <div class="sub-value" id="monthChartSummary" style="margin-top: 0; color: var(--yellow); font-weight: 700;">Totalt hittills: 0,00 kr (0,0 kWh)</div>
     </div>
+
+    <!-- Fördelning hittills i månaden -->
+    <div class="month-breakdown-pills" id="monthBreakdownPills">
+      <span class="pill"><span class="dot" style="background:#38bdf8;"></span>Elhandel (Bixia): <strong id="sumElhandel">0,00 kr</strong></span>
+      <span class="pill"><span class="dot" style="background:#a855f7;"></span>Elnät (Ellevio): <strong id="sumElnat">0,00 kr</strong></span>
+      <span class="pill"><span class="dot" style="background:#eab308;"></span>Energiskatt: <strong id="sumSkatt">0,00 kr</strong></span>
+      <span class="pill"><span class="dot" style="background:#64748b;"></span>Moms (25%): <strong id="sumMoms">0,00 kr</strong></span>
+    </div>
+
     <div class="chart-wrapper">
       <canvas id="monthChart"></canvas>
     </div>
 
-    <!-- Manuellt formulär med automatisk beräkning utifrån valt datums spotpris -->
+    <!-- Manuellt formulär -->
     <div class="month-controls">
       <label>
         1. Välj dag i månaden
@@ -480,14 +488,13 @@
       <button class="btn btn-secondary" id="syncNowBtn" type="button" title="Hämta senaste från molnet nu">🔄 Synka</button>
     </div>
     <div class="sub-value" id="manualDayCalcHint" style="margin-top: 8px; color: var(--accent);">
-      Välj ett datum och knappa in kWh så hämtas just det dygnets spotpris i SE3 automatiskt och räknar ut kostnaden inkl. Ellevio, skatt och moms.
+      Välj ett datum och knappa in kWh så hämtas just det dygnets spotpris i SE3 automatiskt och räknar ut fördelningen mellan elhandel, elnät, skatt och moms.
     </div>
     <div class="sub-value" id="monthFeedback" style="margin-top: 4px;"></div>
   </div>
 
   <!-- Kontrollrummet & Väderbaserad Simulator -->
   <div class="two-col">
-    <!-- Kontrollrummet / Kraftläget -->
     <div class="card">
       <div class="card-title">Kontrollrummet – Kraftläget i Sverige (SE1–SE4)</div>
       <div class="sub-value">Aktuell produktionsmix och balans i stamnätet</div>
@@ -526,7 +533,6 @@
       </a>
     </div>
 
-    <!-- Taxa & Väder-/Prisbaserad Kostnadssimulator -->
     <div class="card">
       <div class="card-title">Taxa & Väderbaserad Kostnadssimulator</div>
       <div class="sub-value">
@@ -635,7 +641,6 @@
           Visar innetemperatur och börvärde när den är ansluten.
         </div>
 
-        <!-- Kalibrering -->
         <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--card-border);">
           <div style="font-weight: 600; font-size: 0.82rem; margin-bottom: 4px;">Kalibrera dagens kWh</div>
           <div style="display:flex; gap:8px; margin-top: 6px; align-items: flex-end;">
@@ -659,8 +664,8 @@
           <input type="text" id="fbUrlInput" placeholder="https://elkollen-donso-default-rtdb.europe-west1.firebasedatabase.app" value="https://elkollen-donso-default-rtdb.europe-west1.firebasedatabase.app" />
         </label>
         <label>
-          Hemligt mappnamn / nyckel (valfritt skydd)
-          <input type="text" id="fbSecretPathInput" placeholder="t.ex. donso_blekebacken_99" value="donso_energi" />
+          Mappnamn (måste vara samma på mobil & dator)
+          <input type="text" id="fbSecretPathInput" placeholder="donso_energi" value="donso_energi" />
         </label>
         <div style="display:flex; gap:8px; margin-top: 12px; flex-wrap: wrap;">
           <button class="btn" id="saveFbBtn" type="button">Anslut & Synka</button>
@@ -673,10 +678,9 @@
     </div>
 
     <div class="info-box">
-      <strong>Så här aktiverar du molnsynk mellan mobil och dator (Google Firebase):</strong><br/>
-      1. Skapa en gratis <strong>Realtime Database</strong> på <em>console.firebase.google.com</em> (välj Europa/Belgien och <em>Test mode</em>).<br/>
-      2. Klistra in databasens URL (utan <code>:null</code> på slutet) samt samma mappnamn i ruta 3 på både mobilen och datorn.<br/>
-      3. Nu synkas alla dagar i månadsöversikten och dagens ackumulerade förbrukning automatiskt mellan dina enheter!
+      <strong>Felsökning vid "Fel vid synk" i Firebase:</strong><br/>
+      1. Gå till fliken <strong>Rules</strong> i din Firebase Realtime Database-konsol och se till att reglerna är satta till <code>".read": true, ".write": true</code> och klicka på <strong>Publish</strong>.<br/>
+      2. Se till att rutan <strong>Mappnamn</strong> ovan inte är tom (t.ex. <code>donso_energi</code>) så skriver webbsidan automatiskt över en ren JSON-struktur i databasen.
     </div>
   </div>
 
@@ -714,11 +718,11 @@
         .replace(/\/+$/, '');
     }
 
-    // --- GOOGLE FIREBASE REALTIME DATABASE SYNC (REST API) ---
+    // --- GOOGLE FIREBASE REALTIME DATABASE SYNC ---
     function getFirebaseEndpoint() {
       const storedUrl = localStorage.getItem('elkollen_fb_url');
       const rawUrl = cleanFirebaseUrl(storedUrl !== null ? storedUrl : DEFAULT_FB_URL);
-      const path = (localStorage.getItem('elkollen_fb_path') || 'donso_energi').trim().replace(/^\/+|\/+$/g, '');
+      const path = (localStorage.getItem('elkollen_fb_path') || 'donso_energi').trim().replace(/^\/+|\/+$/g, '') || 'donso_energi';
       if (!rawUrl) return null;
       return `${rawUrl}/${path}/month_history.json`;
     }
@@ -729,7 +733,9 @@
 
       try {
         const res = await fetch(endpoint);
-        if (!res.ok) throw new Error('HTTP ' + res.status);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status} (${res.status === 401 || res.status === 403 ? 'Behörighet nekad – kontrollera Rules i Firebase' : 'Nätverksfel'})`);
+        }
         const cloudData = await res.json();
 
         const localData = loadMonthHistory();
@@ -739,8 +745,10 @@
           Object.keys(cloudData).forEach(dateKey => {
             const cEntry = cloudData[dateKey];
             const lEntry = merged[dateKey];
-            if (!lEntry || (cEntry.updatedAt || 0) >= (lEntry.updatedAt || 0)) {
-              merged[dateKey] = cEntry;
+            if (cEntry && typeof cEntry === 'object') {
+              if (!lEntry || (cEntry.updatedAt || 0) >= (lEntry.updatedAt || 0)) {
+                merged[dateKey] = cEntry;
+              }
             }
           });
         }
@@ -774,7 +782,7 @@
         document.getElementById('fbStatusText').textContent = 'Fel vid synk';
         document.getElementById('fbStatusText').style.color = 'var(--red)';
         document.getElementById('fbFeedback').style.color = 'var(--red)';
-        document.getElementById('fbFeedback').textContent = 'Kunde inte nå Firebase. Kontrollera URL och databasregler.';
+        document.getElementById('fbFeedback').textContent = err.message;
       }
     }
 
@@ -787,18 +795,51 @@
       lastFirebasePushTime = now;
 
       try {
-        await fetch(endpoint, {
+        const res = await fetch(endpoint, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(historyObj)
         });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        document.getElementById('fbFeedback').style.color = 'var(--muted)';
         document.getElementById('fbFeedback').textContent = `Molnsynkad kl. ${new Date().toLocaleTimeString('sv-SE')}`;
       } catch (err) {
         console.error('Firebase push fel:', err);
       }
     }
 
-    // --- AUTOMATISK BERÄKNING FÖR VALT DATUM I MÅNADSÖVERSIKTEN ---
+    // --- KOSTNADSUPPDELNING (ELHANDEL, ELNÄT, ENERGISKATT, MOMS) ---
+    function calculateCostBreakdown(kwh, totalCostIncVat) {
+      if (!kwh || kwh <= 0 || !totalCostIncVat || totalCostIncVat <= 0) {
+        return { elhandel: 0, elnat: 0, skatt: 0, moms: 0 };
+      }
+      const gridFeeSek = (Number(document.getElementById('gridFeeInput').value) || 0) / 100;
+      const taxSek = (Number(document.getElementById('taxInput').value) || 0) / 100;
+
+      const totalExVat = totalCostIncVat / 1.25;
+      const moms = totalCostIncVat - totalExVat;
+
+      let elnat = kwh * gridFeeSek;
+      let skatt = kwh * taxSek;
+      let elhandel = totalExVat - elnat - skatt;
+
+      // Skydd om man matat in ett manuellt totalbelopp som är lägre än fasta skatter
+      if (elhandel < 0) {
+        elhandel = 0;
+        const scale = totalExVat / (elnat + skatt || 1);
+        elnat *= scale;
+        skatt *= scale;
+      }
+
+      return {
+        elhandel: Number(elhandel.toFixed(2)),
+        elnat: Number(elnat.toFixed(2)),
+        skatt: Number(skatt.toFixed(2)),
+        moms: Number(moms.toFixed(2))
+      };
+    }
+
+    // --- AUTOMATISK BERÄKNING FÖR VALT DATUM ---
     async function getSpotPricesForDate(dateKey) {
       if (historicalPriceCache[dateKey]) {
         return historicalPriceCache[dateKey];
@@ -863,11 +904,12 @@
         }
         const totalSekPerKwh = ((weightedSpotOre + gridFee + tax + markup) / 100) * 1.25;
         const calculatedCost = kwh * totalSekPerKwh;
+        const parts = calculateCostBreakdown(kwh, calculatedCost);
 
         costInput.value = calculatedCost.toFixed(2);
         hintEl.style.color = 'var(--green)';
         hintEl.textContent =
-          `Beräknat för ${dateKey}: Viktat spotpris ${weightedSpotOre.toFixed(1).replace('.', ',')} öre/kWh → totalpris ${totalSekPerKwh.toFixed(2).replace('.', ',')} kr/kWh inkl. moms = ${calculatedCost.toFixed(2).replace('.', ',')} kr.`;
+          `${dateKey}: Totalt ${calculatedCost.toFixed(2).replace('.', ',')} kr (Elhandel ${parts.elhandel.toFixed(2)} kr • Elnät ${parts.elnat.toFixed(2)} kr • Skatt ${parts.skatt.toFixed(2)} kr • Moms ${parts.moms.toFixed(2)} kr).`;
       } else {
         const fallbackRate = currentTotalSekPerKwh || 1.60;
         const fallbackCost = kwh * fallbackRate;
@@ -889,9 +931,15 @@
 
     function saveDayToMonthHistory(dateKey, kwh, costSek, source = 'live', forceCloudPush = false) {
       const history = loadMonthHistory();
+      const parts = calculateCostBreakdown(kwh, costSek);
+
       history[dateKey] = {
         kwh: Number(kwh.toFixed(2)),
         cost: Number(costSek.toFixed(2)),
+        elhandel: parts.elhandel,
+        elnat: parts.elnat,
+        skatt: parts.skatt,
+        moms: parts.moms,
         source,
         updatedAt: Date.now()
       };
@@ -909,9 +957,10 @@
       if (entry) {
         document.getElementById('manualDayKwh').value = entry.kwh;
         document.getElementById('manualDayCost').value = entry.cost;
+        const parts = calculateCostBreakdown(entry.kwh, entry.cost);
         document.getElementById('manualDayCalcHint').style.color = 'var(--muted)';
         document.getElementById('manualDayCalcHint').textContent =
-          `Sparat värde för ${dateKey}: ${entry.kwh.toFixed(1).replace('.', ',')} kWh • ${entry.cost.toFixed(2).replace('.', ',')} kr.`;
+          `Sparat för ${dateKey}: ${entry.kwh.toFixed(1).replace('.', ',')} kWh • ${entry.cost.toFixed(2).replace('.', ',')} kr (Elhandel ${parts.elhandel.toFixed(2)} kr • Elnät ${parts.elnat.toFixed(2)} kr • Skatt ${parts.skatt.toFixed(2)} kr • Moms ${parts.moms.toFixed(2)} kr).`;
       } else {
         document.getElementById('manualDayKwh').value = '';
         document.getElementById('manualDayCost').value = '';
@@ -947,7 +996,6 @@
       const month = now.getMonth();
       const daysInMonth = new Date(year, month + 1, 0).getDate();
       const monthName = now.toLocaleDateString('sv-SE', { month: 'long', year: 'numeric' });
-      const todayKey = getTodayKey();
       const history = loadMonthHistory();
 
       document.getElementById('monthChartHeading').textContent =
@@ -956,12 +1004,19 @@
         `Månaden hittills (${now.toLocaleDateString('sv-SE', { month: 'short' })})`;
 
       const labels = [];
-      const costValues = [];
+      const elhandelArr = [];
+      const elnatArr = [];
+      const skattArr = [];
+      const momsArr = [];
       const kwhValues = [];
-      const barColors = [];
+      const totalValues = [];
 
       let totalMonthCost = 0;
       let totalMonthKwh = 0;
+      let sumElhandel = 0;
+      let sumElnat = 0;
+      let sumSkatt = 0;
+      let sumMoms = 0;
       let loggedDaysCount = 0;
 
       for (let d = 1; d <= daysInMonth; d++) {
@@ -970,25 +1025,35 @@
 
         const entry = history[dateKey];
         if (entry && (entry.cost > 0 || entry.kwh > 0)) {
-          costValues.push(entry.cost);
+          const parts = calculateCostBreakdown(entry.kwh, entry.cost);
+          elhandelArr.push(parts.elhandel);
+          elnatArr.push(parts.elnat);
+          skattArr.push(parts.skatt);
+          momsArr.push(parts.moms);
           kwhValues.push(entry.kwh);
+          totalValues.push(entry.cost);
+
           totalMonthCost += entry.cost;
           totalMonthKwh += entry.kwh;
+          sumElhandel += parts.elhandel;
+          sumElnat += parts.elnat;
+          sumSkatt += parts.skatt;
+          sumMoms += parts.moms;
           loggedDaysCount++;
-
-          if (dateKey === todayKey) {
-            barColors.push('#38bdf8');
-          } else if (entry.source === 'manual') {
-            barColors.push('rgba(168, 85, 247, 0.75)');
-          } else {
-            barColors.push('rgba(34, 197, 94, 0.75)');
-          }
         } else {
-          costValues.push(0);
+          elhandelArr.push(0);
+          elnatArr.push(0);
+          skattArr.push(0);
+          momsArr.push(0);
           kwhValues.push(0);
-          barColors.push('rgba(148, 163, 184, 0.15)');
+          totalValues.push(0);
         }
       }
+
+      document.getElementById('sumElhandel').textContent = `${sumElhandel.toFixed(2).replace('.', ',')} kr`;
+      document.getElementById('sumElnat').textContent = `${sumElnat.toFixed(2).replace('.', ',')} kr`;
+      document.getElementById('sumSkatt').textContent = `${sumSkatt.toFixed(2).replace('.', ',')} kr`;
+      document.getElementById('sumMoms').textContent = `${sumMoms.toFixed(2).replace('.', ',')} kr`;
 
       document.getElementById('monthChartSummary').textContent =
         `Totalt hittills: ${totalMonthCost.toFixed(2).replace('.', ',')} kr (${totalMonthKwh.toFixed(1).replace('.', ',')} kWh)`;
@@ -1006,16 +1071,41 @@
         type: 'bar',
         data: {
           labels,
-          datasets: [{
-            label: 'Kostnad (kr)',
-            data: costValues,
-            backgroundColor: barColors,
-            borderRadius: 5
-          }]
+          datasets: [
+            {
+              label: 'Elhandel (Bixia)',
+              data: elhandelArr,
+              backgroundColor: '#38bdf8',
+              stack: 'costStack'
+            },
+            {
+              label: 'Elnät (Ellevio)',
+              data: elnatArr,
+              backgroundColor: '#a855f7',
+              stack: 'costStack'
+            },
+            {
+              label: 'Energiskatt',
+              data: skattArr,
+              backgroundColor: '#eab308',
+              stack: 'costStack'
+            },
+            {
+              label: 'Moms (25%)',
+              data: momsArr,
+              backgroundColor: '#64748b',
+              borderRadius: { topLeft: 4, topRight: 4 },
+              stack: 'costStack'
+            }
+          ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
           onClick: (evt, elements) => {
             if (elements.length > 0) {
               const idx = elements[0].index;
@@ -1025,25 +1115,31 @@
             }
           },
           plugins: {
-            legend: { display: false },
+            legend: {
+              display: true,
+              labels: { color: '#94a3b8' }
+            },
             tooltip: {
               callbacks: {
-                label: (ctx) => {
-                  const idx = ctx.dataIndex;
-                  const cost = costValues[idx];
+                footer: (items) => {
+                  const idx = items[0].dataIndex;
+                  const tot = totalValues[idx];
                   const kwh = kwhValues[idx];
-                  if (cost === 0 && kwh === 0) return 'Ingen data sparad (klicka på stapeln för att fylla i)';
-                  return `${cost.toFixed(2).replace('.', ',')} kr (${kwh.toFixed(1).replace('.', ',')} kWh)`;
-                }
+                  if (tot === 0 && kwh === 0) return 'Ingen data sparad (klicka på stapeln för att fylla i)';
+                  return `Totalt: ${tot.toFixed(2).replace('.', ',')} kr (${kwh.toFixed(1).replace('.', ',')} kWh)`;
+                },
+                label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2).replace('.', ',')} kr`
               }
             }
           },
           scales: {
             x: {
+              stacked: true,
               grid: { display: false },
               ticks: { color: '#94a3b8', maxRotation: 0 }
             },
             y: {
+              stacked: true,
               beginAtZero: true,
               grid: { color: '#334155' },
               ticks: {
@@ -1283,6 +1379,7 @@
       document.getElementById('currentTotal').textContent = currentTotalSekPerKwh.toFixed(2).replace('.', ',') + ' kr/kWh';
 
       updateWeatherPriceSimulation();
+      renderMonthOverview();
 
       if (document.getElementById('manualDayKwh').value) {
         autoCalculateManualDayCost();
@@ -1758,6 +1855,7 @@
       if (!url) return;
 
       document.getElementById('fbUrlInput').value = url;
+      document.getElementById('fbSecretPathInput').value = path;
       localStorage.setItem('elkollen_fb_url', url);
       localStorage.setItem('elkollen_fb_path', path);
       syncFromFirebase(true);
