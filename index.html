@@ -62,7 +62,6 @@
       font-weight: 600;
     }
 
-    /* 4 kolumner på desktop så att de 8 nyckeltalskorten bildar 2 jämna rader */
     .grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -317,7 +316,7 @@
       flex-direction: column;
       gap: 5px;
       flex: 1;
-      min-width: 140px;
+      min-width: 145px;
     }
 
     .info-box {
@@ -410,14 +409,14 @@
       <div class="sub-value" id="ngenicMiniStatus">Ngenic: Ej ansluten</div>
     </div>
 
-    <!-- Rad 2, Kort 7 (under Dagens förbrukning): Månadens total hittills -->
+    <!-- Rad 2, Kort 7: Månadens total hittills -->
     <div class="card">
       <div class="card-title" id="monthCardTitle">Månaden hittills</div>
       <div class="big-value" id="monthTotalCostCard" style="color: var(--purple);">0,00 kr</div>
       <div class="sub-value" id="monthTotalSubCard">0,0 kWh • 0 sparade dagar</div>
     </div>
 
-    <!-- Rad 2, Kort 8 (under Dagens kostnad): Dagens estimat (Väder + Vind + Elpris) -->
+    <!-- Rad 2, Kort 8: Dagens estimat (Väder + Vind + Elpris) -->
     <div class="card">
       <div class="card-title">Dagens estimat (Väder & Pris)</div>
       <div class="big-value" id="estDayCostCard" style="color: var(--accent);">-- kr</div>
@@ -446,7 +445,7 @@
     </div>
   </div>
 
-  <!-- Månadsöversikt dag-för-dag (Lika stor ruta som vädergrafen) -->
+  <!-- Månadsöversikt dag-för-dag -->
   <div class="chart-container">
     <div class="chart-header">
       <div class="card-title" style="margin-bottom: 0;" id="monthChartHeading">Månadens elkostnad dag-för-dag (kr inkl. elnät, skatt & moms)</div>
@@ -456,27 +455,28 @@
       <canvas id="monthChart"></canvas>
     </div>
 
-    <!-- Manuellt formulär för att fylla i saknade dagar eller ta backup -->
+    <!-- Manuellt formulär med automatisk beräkning utifrån valt datums spotpris -->
     <div class="month-controls">
       <label>
-        Välj dag i månaden
+        1. Välj dag i månaden
         <select id="manualDaySelect"></select>
       </label>
       <label>
-        Förbrukning den dagen (kWh)
+        2. Förbrukning den dagen (kWh)
         <input type="number" id="manualDayKwh" placeholder="t.ex. 32.5" step="0.1" />
       </label>
       <label>
-        Kostnad den dagen (kr inkl. allt)
-        <input type="number" id="manualDayCost" placeholder="t.ex. 58.40" step="0.1" />
+        3. Kostnad den dagen (kr inkl. allt – beräknas auto)
+        <input type="number" id="manualDayCost" placeholder="Fylls i automatiskt..." step="0.01" />
       </label>
       <button class="btn" id="saveManualDayBtn" type="button">Spara dag</button>
       <button class="btn btn-secondary" id="deleteManualDayBtn" type="button">Radera dag</button>
       <button class="btn btn-secondary" id="exportDataBtn" type="button" title="Kopiera eller spara all historik som backup">💾 Backup</button>
     </div>
-    <div class="sub-value" id="monthFeedback" style="margin-top: 8px;">
-      Dagens värden sparas automatiskt i webbläsaren. Saknas historik för tidigare dagar i månaden kan du fylla i dem ovan så uppdateras staplarna och månadstotalen direkt.
+    <div class="sub-value" id="manualDayCalcHint" style="margin-top: 8px; color: var(--accent);">
+      Välj ett datum och knappa in kWh så hämtas just det dygnets spotpris i SE3 automatiskt och räknar ut kostnaden inkl. Ellevio, skatt och moms.
     </div>
+    <div class="sub-value" id="monthFeedback" style="margin-top: 4px;"></div>
   </div>
 
   <!-- Kontrollrummet & Väderbaserad Simulator -->
@@ -649,7 +649,7 @@
     <div class="info-box">
       <strong>Så här lagras din historik:</strong><br/>
       • All dygns- och månadsdata lagras lokalt i webbläsarens <code>localStorage</code> under respektive datum (<code>YYYY-MM-DD</code>).<br/>
-      • Så länge HomeWizard är inkopplad växer dagens stapel i månadsöversikten i realtid. När HomeWizard och Ngenic är frånkopplade använder sidan automatiskt väder- och elprismodellen för Donsö för att simulera både kostnad just nu och hela dagens totalkostnad.
+      • När du fyller i en saknad dag i månadsöversikten hämtar sidan automatiskt det exakta spotpriset i SE3 för just det datumet och räknar fram totalkostnaden inklusive Ellevios nätavgift, energiskatt och moms.
     </div>
   </div>
 
@@ -659,8 +659,7 @@
     let hourlySpotOreArray = new Array(24).fill(50);
     let hourlyTempArray = new Array(24).fill(7);
     let hourlyWindArray = new Array(24).fill(5);
-    let weatherLoaded = false;
-    let pricesLoaded = false;
+    const historicalPriceCache = {}; // Cache för historiska spotpriser per datum (YYYY-MM-DD)
 
     let liveWatts = 1400;
     let hwActive = false;
@@ -677,9 +676,87 @@
       return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     }
 
-    function getMonthPrefix() {
-      const now = new Date();
-      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    // --- AUTOMATISK BERÄKNING FÖR VALT DATUM I MÅNADSÖVERSIKTEN ---
+    async function getSpotPricesForDate(dateKey) {
+      if (historicalPriceCache[dateKey]) {
+        return historicalPriceCache[dateKey];
+      }
+      const [year, month, day] = dateKey.split('-');
+      const url = `https://www.elprisetjustnu.se/api/v1/prices/${year}/${month}-${day}_SE3.json`;
+
+      try {
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const data = await res.json();
+
+        // Samla snitt per timme (0-23) oavsett om API:et returnerar 24 timmar eller 96 kvartar
+        const hourBuckets = Array.from({ length: 24 }, () => []);
+        data.forEach(entry => {
+          const h = new Date(entry.time_start).getHours();
+          hourBuckets[h].push(entry.SEK_per_kWh * 100);
+        });
+
+        const hourlyOre = hourBuckets.map(arr =>
+          arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 50
+        );
+        historicalPriceCache[dateKey] = hourlyOre;
+        return hourlyOre;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // Viktad förbrukningsprofil över dygnet (24h, summa = 1.0) så att dygnets dyrare/billigare timmar viktas realistiskt
+    const HOURLY_LOAD_WEIGHTS = [
+      0.028, 0.026, 0.025, 0.025, 0.027, 0.032, // 00-05 (natt)
+      0.044, 0.052, 0.048, 0.042, 0.039, 0.038, // 06-11 (morgon & förmiddag)
+      0.038, 0.037, 0.038, 0.041, 0.048, 0.056, // 12-17 (eftermiddag)
+      0.060, 0.058, 0.052, 0.044, 0.034, 0.028  // 18-23 (kväll)
+    ];
+
+    async function autoCalculateManualDayCost() {
+      const dateKey = document.getElementById('manualDaySelect').value;
+      const kwh = parseFloat(document.getElementById('manualDayKwh').value);
+      const costInput = document.getElementById('manualDayCost');
+      const hintEl = document.getElementById('manualDayCalcHint');
+
+      if (isNaN(kwh) || kwh <= 0) {
+        costInput.value = '';
+        hintEl.style.color = 'var(--accent)';
+        hintEl.textContent = `Datum valt: ${dateKey}. Fyll i kWh så räknas kostnaden inkl. dagens spotpris i SE3 ut automatiskt.`;
+        return;
+      }
+
+      hintEl.style.color = 'var(--muted)';
+      hintEl.textContent = `Hämtar spotpriser för ${dateKey} (SE3)...`;
+
+      const gridFee = Number(document.getElementById('gridFeeInput').value) || 0;
+      const tax = Number(document.getElementById('taxInput').value) || 0;
+      const markup = Number(document.getElementById('markupInput').value) || 0;
+
+      const hourlyOre = await getSpotPricesForDate(dateKey);
+
+      if (hourlyOre) {
+        let weightedSpotOre = 0;
+        for (let h = 0; h < 24; h++) {
+          weightedSpotOre += hourlyOre[h] * HOURLY_LOAD_WEIGHTS[h];
+        }
+        const totalSekPerKwh = ((weightedSpotOre + gridFee + tax + markup) / 100) * 1.25;
+        const calculatedCost = kwh * totalSekPerKwh;
+
+        costInput.value = calculatedCost.toFixed(2);
+        hintEl.style.color = 'var(--green)';
+        hintEl.textContent =
+          `Beräknat för ${dateKey}: Viktat spotpris ${weightedSpotOre.toFixed(1).replace('.', ',')} öre/kWh → totalpris ${totalSekPerKwh.toFixed(2).replace('.', ',')} kr/kWh inkl. moms = ${calculatedCost.toFixed(2).replace('.', ',')} kr.`;
+      } else {
+        // Fallback om framtida datum väljs där elpriser ännu inte publicerats
+        const fallbackRate = currentTotalSekPerKwh || 1.60;
+        const fallbackCost = kwh * fallbackRate;
+        costInput.value = fallbackCost.toFixed(2);
+        hintEl.style.color = 'var(--yellow)';
+        hintEl.textContent =
+          `Inga publicerade spotpriser hittades för ${dateKey} (ev. framtida datum) – uppskattat med dagens taxa (${fallbackRate.toFixed(2).replace('.', ',')} kr/kWh).`;
+      }
     }
 
     // --- MÅNADSHISTORIK I LOCALSTORAGE ---
@@ -702,6 +779,25 @@
       renderMonthOverview();
     }
 
+    function selectDayInForm(dateKey) {
+      const select = document.getElementById('manualDaySelect');
+      select.value = dateKey;
+      const hist = loadMonthHistory();
+      const entry = hist[dateKey];
+
+      if (entry) {
+        document.getElementById('manualDayKwh').value = entry.kwh;
+        document.getElementById('manualDayCost').value = entry.cost;
+        document.getElementById('manualDayCalcHint').style.color = 'var(--muted)';
+        document.getElementById('manualDayCalcHint').textContent =
+          `Sparat värde för ${dateKey}: ${entry.kwh.toFixed(1).replace('.', ',')} kWh • ${entry.cost.toFixed(2).replace('.', ',')} kr. Ändra kWh ovan för att räkna om automatiskt.`;
+      } else {
+        document.getElementById('manualDayKwh').value = '';
+        document.getElementById('manualDayCost').value = '';
+        autoCalculateManualDayCost();
+      }
+    }
+
     function populateManualDayDropdown() {
       const now = new Date();
       const year = now.getFullYear();
@@ -720,10 +816,7 @@
       }
 
       select.addEventListener('change', () => {
-        const hist = loadMonthHistory();
-        const entry = hist[select.value];
-        document.getElementById('manualDayKwh').value = entry ? entry.kwh : '';
-        document.getElementById('manualDayCost').value = entry ? entry.cost : '';
+        selectDayInForm(select.value);
       });
     }
 
@@ -763,11 +856,11 @@
           loggedDaysCount++;
 
           if (dateKey === todayKey) {
-            barColors.push('#38bdf8'); // Idag i klarblått
+            barColors.push('#38bdf8');
           } else if (entry.source === 'manual') {
-            barColors.push('rgba(168, 85, 247, 0.75)'); // Manuellt inlagd dag i lila
+            barColors.push('rgba(168, 85, 247, 0.75)');
           } else {
-            barColors.push('rgba(34, 197, 94, 0.75)'); // Automatiskt loggad dag i grönt
+            barColors.push('rgba(34, 197, 94, 0.75)');
           }
         } else {
           costValues.push(0);
@@ -807,10 +900,7 @@
               const idx = elements[0].index;
               const dayNum = idx + 1;
               const clickedKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-              document.getElementById('manualDaySelect').value = clickedKey;
-              const entry = history[clickedKey];
-              document.getElementById('manualDayKwh').value = entry ? entry.kwh : '';
-              document.getElementById('manualDayCost').value = entry ? entry.cost : '';
+              selectDayInForm(clickedKey);
             }
           },
           plugins: {
@@ -852,26 +942,21 @@
       const wind = hourlyWindArray[hour] !== undefined ? hourlyWindArray[hour] : 5;
       const spotOre = hourlySpotOreArray[hour] !== undefined ? hourlySpotOreArray[hour] : 50;
 
-      // 1. Baslast (kyl/frys, ventilation, nätverk, standby) ~ 380 W
       let watts = 380;
 
-      // 2. Uppvärmningsbehov (Nibe värmepump) vid temperatur under 19 °C
       if (temp < 19) {
         const deltaT = 19 - temp;
-        watts += deltaT * 75; // ca 75 W per grad under 19 °C
+        watts += deltaT * 75;
       }
 
-      // 3. Vindavkylning på Donsö (över 4 m/s ökar värmeförlusterna)
       if (wind > 4 && temp < 16) {
         watts += (wind - 4) * 35;
       }
 
-      // 4. Hushållsprofil över dygnet (morgon & kvällsaktivitet)
       if (hour >= 6 && hour <= 8) watts += 450;
       else if (hour >= 17 && hour <= 21) watts += 750;
       else if (hour >= 9 && hour <= 16) watts += 250;
 
-      // 5. Smart elprisstyrning (dämpar värme vid pristoppar > 100 öre, förvärmer vid < 35 öre)
       if (spotOre > 100) watts *= 0.82;
       else if (spotOre < 35) watts *= 1.15;
 
@@ -904,7 +989,6 @@
       const simNowWatts = calculateHourlySimulatedWatts(currentHour);
       const simNowCostPerHour = (simNowWatts / 1000) * currentTotalSekPerKwh;
 
-      // Uppdatera simulatorrutan
       document.getElementById('simBoxNowCost').textContent =
         `${simNowCostPerHour.toFixed(2).replace('.', ',')} kr/h (${simNowWatts.toLocaleString('sv-SE')} W)`;
       document.getElementById('simBoxDayTotal').textContent =
@@ -915,13 +999,11 @@
       document.getElementById('simWeatherFactorText').textContent =
         `Just nu på Donsö: ${curTemp.toFixed(1).replace('.', ',')} °C och ${curWind.toFixed(1).replace('.', ',')} m/s → beräknat effektbehov ${simNowWatts.toLocaleString('sv-SE')} W.`;
 
-      // Uppdatera Kort 8 (Dagens estimat)
       document.getElementById('estDayCostCard').textContent =
         `${totalEstDayCost.toFixed(2).replace('.', ',')} kr`;
       document.getElementById('estDaySubCard').textContent =
         `Estimerat ~${totalEstDayKwh.toFixed(1).replace('.', ',')} kWh idag (Donsö)`;
 
-      // Om varken HomeWizard eller Ngenic styr live-värdet, visa simulerad kostnad & effekt i toppkorten
       if (!hwActive && !ngenicActive) {
         liveWatts = simNowWatts;
         document.getElementById('powerCardTitle').textContent = 'Effektuttag just nu (Simulerat)';
@@ -999,7 +1081,6 @@
       document.getElementById('todayCostSub').textContent =
         `Snittpris idag: ${avgTodayPrice.toFixed(2).replace('.', ',')} kr/kWh inkl. moms`;
 
-      // Spara dagens löpande siffra direkt till månadsöversikten
       saveDayToMonthHistory(getTodayKey(), todayKwh, newCost, 'live');
     }
 
@@ -1071,6 +1152,11 @@
       document.getElementById('currentTotal').textContent = currentTotalSekPerKwh.toFixed(2).replace('.', ',') + ' kr/kWh';
 
       updateWeatherPriceSimulation();
+
+      // Uppdatera även manuell dagsberäkning om användaren har en kWh-siffra inskriven
+      if (document.getElementById('manualDayKwh').value) {
+        autoCalculateManualDayCost();
+      }
 
       if (hwActive) {
         const kw = liveWatts / 1000;
@@ -1290,7 +1376,8 @@
           }
         });
 
-        pricesLoaded = true;
+        historicalPriceCache[getTodayKey()] = [...hourlySpotOreArray];
+
         const avgPrice = (sumPrice / data.length).toFixed(1);
         document.getElementById('minMaxSpot').textContent =
           `${minPrice.toFixed(0)} / ${maxPrice.toFixed(0)} öre`;
@@ -1388,7 +1475,6 @@
           }
         });
 
-        weatherLoaded = true;
         updateCalculator();
         renderWeatherChart(labels, temps, winds, tempColors);
       } catch (err) {
@@ -1489,21 +1575,23 @@
     document.getElementById('hwVersionSelect').addEventListener('change', toggleHwVersionUI);
     document.getElementById('pairHwBtn').addEventListener('click', pairHomeWizardV2);
 
+    // Trigga automatisk kostnadsuträkning direkt när man skriver kWh
+    document.getElementById('manualDayKwh').addEventListener('input', autoCalculateManualDayCost);
+
     // Spara manuellt inlagd dag i månadsöversikten
-    document.getElementById('saveManualDayBtn').addEventListener('click', () => {
+    document.getElementById('saveManualDayBtn').addEventListener('click', async () => {
       const dateKey = document.getElementById('manualDaySelect').value;
       const kwh = parseFloat(document.getElementById('manualDayKwh').value) || 0;
       let cost = parseFloat(document.getElementById('manualDayCost').value);
 
-      // Om man bara fyller i kWh men lämnar kostnad tom, räkna ut ungefärlig kostnad med aktuell taxa
       if (isNaN(cost) && kwh > 0) {
-        cost = kwh * (currentTotalSekPerKwh || 1.5);
+        await autoCalculateManualDayCost();
+        cost = parseFloat(document.getElementById('manualDayCost').value) || 0;
       }
       if (isNaN(cost)) cost = 0;
 
       saveDayToMonthHistory(dateKey, kwh, cost, 'manual');
 
-      // Om det är dagens datum som ändrades, uppdatera även dagens ackumulerade kort
       if (dateKey === getTodayKey()) {
         localStorage.setItem('elkollen_day_cost_sek', String(cost));
         document.getElementById('todayKwhDisplay').textContent = kwh.toFixed(2).replace('.', ',') + ' kWh';
@@ -1527,7 +1615,6 @@
       document.getElementById('monthFeedback').textContent = `Raderade sparade värden för ${dateKey}.`;
     });
 
-    // Exportera / Importera JSON-backup
     document.getElementById('exportDataBtn').addEventListener('click', () => {
       const historyJson = localStorage.getItem('elkollen_month_history') || '{}';
       const userAction = prompt(
@@ -1546,7 +1633,6 @@
       }
     });
 
-    // Kalibrera dagens startvärde
     document.getElementById('calibrateDayBtn').addEventListener('click', () => {
       const alreadyUsedKwh = parseFloat(document.getElementById('calibrateKwhInput').value);
       const lastImport = parseFloat(localStorage.getItem('elkollen_day_last_import'));
