@@ -450,10 +450,10 @@
     </div>
   </div>
 
-  <!-- Månadsöversikt dag-för-dag med uppdelning på Elhandel, Elnät, Energiskatt och Moms -->
+  <!-- Månadsöversikt dag-för-dag med uppdelning på Elhandel, Elnät, Energiskatt, Moms + Grön linje för kWh -->
   <div class="chart-container">
     <div class="chart-header">
-      <div class="card-title" style="margin-bottom: 0;" id="monthChartHeading">Månadens elkostnad dag-för-dag – uppdelat per kostnadsslag</div>
+      <div class="card-title" style="margin-bottom: 0;" id="monthChartHeading">Månadens elkostnad dag-för-dag & Förbrukning (kWh)</div>
       <div class="sub-value" id="monthChartSummary" style="margin-top: 0; color: var(--yellow); font-weight: 700;">Totalt hittills: 0,00 kr (0,0 kWh)</div>
     </div>
 
@@ -463,6 +463,7 @@
       <span class="pill"><span class="dot" style="background:#a855f7;"></span>Elnät (Ellevio): <strong id="sumElnat">0,00 kr</strong></span>
       <span class="pill"><span class="dot" style="background:#eab308;"></span>Energiskatt: <strong id="sumSkatt">0,00 kr</strong></span>
       <span class="pill"><span class="dot" style="background:#64748b;"></span>Moms (25%): <strong id="sumMoms">0,00 kr</strong></span>
+      <span class="pill"><span class="dot" style="background:#22c55e;"></span>Förbrukning: <strong id="sumKwhPill">0,0 kWh</strong></span>
     </div>
 
     <div class="chart-wrapper">
@@ -823,7 +824,6 @@
       let skatt = kwh * taxSek;
       let elhandel = totalExVat - elnat - skatt;
 
-      // Skydd om man matat in ett manuellt totalbelopp som är lägre än fasta skatter
       if (elhandel < 0) {
         elhandel = 0;
         const scale = totalExVat / (elnat + skatt || 1);
@@ -999,7 +999,7 @@
       const history = loadMonthHistory();
 
       document.getElementById('monthChartHeading').textContent =
-        `Månadens elkostnad dag-för-dag – ${monthName} (kr inkl. allt)`;
+        `Månadens elkostnad dag-för-dag & Förbrukning – ${monthName}`;
       document.getElementById('monthCardTitle').textContent =
         `Månaden hittills (${now.toLocaleDateString('sv-SE', { month: 'short' })})`;
 
@@ -1008,7 +1008,7 @@
       const elnatArr = [];
       const skattArr = [];
       const momsArr = [];
-      const kwhValues = [];
+      const kwhLineArr = [];
       const totalValues = [];
 
       let totalMonthCost = 0;
@@ -1030,7 +1030,7 @@
           elnatArr.push(parts.elnat);
           skattArr.push(parts.skatt);
           momsArr.push(parts.moms);
-          kwhValues.push(entry.kwh);
+          kwhLineArr.push(entry.kwh);
           totalValues.push(entry.cost);
 
           totalMonthCost += entry.cost;
@@ -1045,7 +1045,7 @@
           elnatArr.push(0);
           skattArr.push(0);
           momsArr.push(0);
-          kwhValues.push(0);
+          kwhLineArr.push(null); // null gör att gröna kWh-linjen inte faller ner till 0 på framtida dagar
           totalValues.push(0);
         }
       }
@@ -1054,6 +1054,7 @@
       document.getElementById('sumElnat').textContent = `${sumElnat.toFixed(2).replace('.', ',')} kr`;
       document.getElementById('sumSkatt').textContent = `${sumSkatt.toFixed(2).replace('.', ',')} kr`;
       document.getElementById('sumMoms').textContent = `${sumMoms.toFixed(2).replace('.', ',')} kr`;
+      document.getElementById('sumKwhPill').textContent = `${totalMonthKwh.toFixed(1).replace('.', ',')} kWh`;
 
       document.getElementById('monthChartSummary').textContent =
         `Totalt hittills: ${totalMonthCost.toFixed(2).replace('.', ',')} kr (${totalMonthKwh.toFixed(1).replace('.', ',')} kWh)`;
@@ -1068,34 +1069,59 @@
       if (monthChartInstance) monthChartInstance.destroy();
 
       monthChartInstance = new Chart(ctx, {
-        type: 'bar',
         data: {
           labels,
           datasets: [
             {
+              type: 'line',
+              label: 'Förbrukning (kWh)',
+              data: kwhLineArr,
+              borderColor: '#22c55e',
+              backgroundColor: '#22c55e',
+              borderWidth: 2.5,
+              pointRadius: 3.5,
+              pointHoverRadius: 6,
+              tension: 0.3,
+              spanGaps: true,
+              yAxisID: 'yKwh',
+              order: 1
+            },
+            {
+              type: 'bar',
               label: 'Elhandel (Bixia)',
               data: elhandelArr,
               backgroundColor: '#38bdf8',
-              stack: 'costStack'
+              stack: 'costStack',
+              yAxisID: 'yCost',
+              order: 2
             },
             {
+              type: 'bar',
               label: 'Elnät (Ellevio)',
               data: elnatArr,
               backgroundColor: '#a855f7',
-              stack: 'costStack'
+              stack: 'costStack',
+              yAxisID: 'yCost',
+              order: 2
             },
             {
+              type: 'bar',
               label: 'Energiskatt',
               data: skattArr,
               backgroundColor: '#eab308',
-              stack: 'costStack'
+              stack: 'costStack',
+              yAxisID: 'yCost',
+              order: 2
             },
             {
+              type: 'bar',
               label: 'Moms (25%)',
               data: momsArr,
               backgroundColor: '#64748b',
               borderRadius: { topLeft: 4, topRight: 4 },
-              stack: 'costStack'
+              stack: 'costStack',
+              yAxisID: 'yCost',
+              order: 2
             }
           ]
         },
@@ -1124,11 +1150,17 @@
                 footer: (items) => {
                   const idx = items[0].dataIndex;
                   const tot = totalValues[idx];
-                  const kwh = kwhValues[idx];
-                  if (tot === 0 && kwh === 0) return 'Ingen data sparad (klicka på stapeln för att fylla i)';
-                  return `Totalt: ${tot.toFixed(2).replace('.', ',')} kr (${kwh.toFixed(1).replace('.', ',')} kWh)`;
+                  const kwh = kwhLineArr[idx];
+                  if (tot === 0 && !kwh) return 'Ingen data sparad (klicka på stapeln för att fylla i)';
+                  return `Totalkostnad: ${tot.toFixed(2).replace('.', ',')} kr`;
                 },
-                label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2).replace('.', ',')} kr`
+                label: (ctx) => {
+                  if (ctx.dataset.yAxisID === 'yKwh') {
+                    if (ctx.parsed.y === null) return null;
+                    return `Förbrukning: ${ctx.parsed.y.toFixed(1).replace('.', ',')} kWh`;
+                  }
+                  return `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2).replace('.', ',')} kr`;
+                }
               }
             }
           },
@@ -1138,13 +1170,25 @@
               grid: { display: false },
               ticks: { color: '#94a3b8', maxRotation: 0 }
             },
-            y: {
+            yCost: {
+              type: 'linear',
+              position: 'left',
               stacked: true,
               beginAtZero: true,
               grid: { color: '#334155' },
               ticks: {
-                color: '#94a3b8',
+                color: '#38bdf8',
                 callback: (val) => val + ' kr'
+              }
+            },
+            yKwh: {
+              type: 'linear',
+              position: 'right',
+              beginAtZero: true,
+              grid: { drawOnChartArea: false },
+              ticks: {
+                color: '#22c55e',
+                callback: (val) => val + ' kWh'
               }
             }
           }
