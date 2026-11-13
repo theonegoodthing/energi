@@ -138,6 +138,12 @@
       margin-bottom: 24px;
     }
 
+    .three-col {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 18px;
+    }
+
     .mix-bar {
       display: flex;
       height: 22px;
@@ -355,7 +361,7 @@
       <div class="sub-value" id="dateDisplay">Laddar datum...</div>
     </div>
     <div style="display:flex; gap:8px; flex-wrap:wrap;">
-      <span class="badge"><span class="status-dot"></span>Spotpris (Bixia / Nord Pool)</span>
+      <span class="badge" id="firebaseHeaderBadge"><span class="status-dot offline" id="fbDot"></span>Molnsynk: Lokal</span>
       <span class="badge" id="hwHeaderBadge"><span class="status-dot offline" id="hwDot"></span>HomeWizard: Ej ansluten</span>
     </div>
   </header>
@@ -471,7 +477,7 @@
       </label>
       <button class="btn" id="saveManualDayBtn" type="button">Spara dag</button>
       <button class="btn btn-secondary" id="deleteManualDayBtn" type="button">Radera dag</button>
-      <button class="btn btn-secondary" id="exportDataBtn" type="button" title="Kopiera eller spara all historik som backup">💾 Backup</button>
+      <button class="btn btn-secondary" id="syncNowBtn" type="button" title="Hämta senaste från molnet nu">🔄 Synka</button>
     </div>
     <div class="sub-value" id="manualDayCalcHint" style="margin-top: 8px; color: var(--accent);">
       Välj ett datum och knappa in kWh så hämtas just det dygnets spotpris i SE3 automatiskt och räknar ut kostnaden inkl. Ellevio, skatt och moms.
@@ -566,105 +572,129 @@
     </div>
   </div>
 
-  <!-- LOKAL ANSLUTNING: HOMEWIZARD & NGENIC -->
+  <!-- LOKAL HÅRDVARA & MOLNSYNK (FIREBASE) -->
   <div class="card" style="margin-bottom: 30px;">
-    <div class="card-title">🏠 Lokal Hårdvara & Realtidsanslutning (Hemma-läge)</div>
+    <div class="card-title">🏠 Lokal Hårdvara & Molnsynk mellan enheter</div>
     <div class="sub-value">
-      Fyll i dina lokala uppgifter nedan. All information sparas enbart i din egen webbläsare (localStorage) och skickas aldrig till GitHub.
+      Alla nycklar och adresser sparas enbart lokalt i din egen webbläsare (localStorage) och skickas aldrig till GitHub.
     </div>
 
-    <div class="two-col" style="margin-top: 18px; margin-bottom: 0;">
-      <!-- HomeWizard P1 -->
+    <div class="three-col" style="margin-top: 18px;">
+      <!-- 1. HomeWizard P1 -->
       <div class="input-group" style="background: rgba(15,23,42,0.45); padding: 16px; border-radius: 10px; border: 1px solid var(--card-border);">
         <div style="font-weight: 600; margin-bottom: 6px; display:flex; justify-content:space-between;">
-          <span>1. HomeWizard P1-mätare (Lokalt API)</span>
+          <span>1. HomeWizard P1 (Lokalt API)</span>
           <span id="hwStatusText" style="font-size:0.8rem; color:var(--muted);">Ej aktiv</span>
         </div>
 
         <label>
           API-version
           <select id="hwVersionSelect">
-            <option value="v2">API v2 (HTTPS + Token – Rekommenderas för GitHub Pages)</option>
-            <option value="v1">API v1 (HTTP – Utan token)</option>
+            <option value="v2">API v2 (HTTPS + Token)</option>
+            <option value="v1">API v1 (HTTP)</option>
           </select>
         </label>
 
         <label>
-          Lokalt IP-adress (t.ex. 192.168.1.45)
+          Lokalt IP-adress
           <input type="text" id="hwIpInput" placeholder="192.168.1.xxx" />
         </label>
 
         <div id="hwV2TokenBox">
           <label>
-            HomeWizard v2 Token (krävs för HTTPS / v2)
-            <input type="password" id="hwTokenInput" placeholder="Klistra in eller generera token nedan" />
+            HomeWizard v2 Token
+            <input type="password" id="hwTokenInput" placeholder="Token..." />
           </label>
           <div style="margin-top: 8px;">
-            <button class="btn btn-secondary" id="pairHwBtn" type="button">🔑 Hämta ny v2-token (Tryck först på P1-knappen)</button>
+            <button class="btn btn-secondary" id="pairHwBtn" type="button">🔑 Hämta v2-token</button>
           </div>
         </div>
 
         <div style="display:flex; gap:8px; margin-top: 12px; flex-wrap: wrap;">
-          <button class="btn" id="saveHwBtn" type="button">Anslut & Spara</button>
+          <button class="btn" id="saveHwBtn" type="button">Anslut</button>
           <button class="btn btn-secondary" id="clearHwBtn" type="button">Koppla från</button>
         </div>
         <div class="sub-value" id="hwFeedback" style="margin-top: 8px;"></div>
       </div>
 
-      <!-- Ngenic Tune -->
+      <!-- 2. Ngenic Tune -->
       <div class="input-group" style="background: rgba(15,23,42,0.45); padding: 16px; border-radius: 10px; border: 1px solid var(--card-border);">
         <div style="font-weight: 600; margin-bottom: 6px; display:flex; justify-content:space-between;">
-          <span>2. Ngenic Tune (Värmepumpsstyrning)</span>
+          <span>2. Ngenic Tune</span>
           <span id="ngenicStatusText" style="font-size:0.8rem; color:var(--muted);">Ej aktiv</span>
         </div>
         <label>
-          Ngenic Personal Access Token (API-nyckel)
-          <input type="password" id="ngenicTokenInput" placeholder="Klistra in din Ngenic Bearer-token" />
+          Ngenic Personal Access Token
+          <input type="password" id="ngenicTokenInput" placeholder="Klistra in Bearer-token" />
         </label>
         <div style="display:flex; gap:8px; margin-top: 12px;">
           <button class="btn" id="saveNgenicBtn" type="button">Anslut Ngenic</button>
           <button class="btn btn-secondary" id="clearNgenicBtn" type="button">Rensa</button>
         </div>
         <div class="sub-value" id="ngenicDataBox" style="margin-top: 8px;">
-          Visar innetemperatur, börvärde och aktiv elprisstyrning när den är ansluten.
+          Visar innetemperatur och börvärde när den är ansluten.
         </div>
 
-        <!-- Kalibrering av dagens mätning -->
-        <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--card-border);">
-          <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 4px;">Kalibrera dagens ackumulerade värden</div>
-          <div class="sub-value" style="font-size: 0.78rem;">
-            Synka dagens löpande kWh mot HomeWizard-appen om du ansluter mitt på dagen (uppdaterar även dagens stapel i månadsöversikten):
-          </div>
-          <div style="display:flex; gap:8px; margin-top: 8px; align-items: flex-end;">
+        <!-- Kalibrering -->
+        <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--card-border);">
+          <div style="font-weight: 600; font-size: 0.82rem; margin-bottom: 4px;">Kalibrera dagens kWh</div>
+          <div style="display:flex; gap:8px; margin-top: 6px; align-items: flex-end;">
             <label style="margin-top:0;">
-              Redan förbrukat idag (kWh)
+              Förbrukat hittills idag (kWh)
               <input type="number" id="calibrateKwhInput" placeholder="t.ex. 24.5" step="0.1" />
             </label>
-            <button class="btn btn-secondary" id="calibrateDayBtn" type="button">Sätt startvärde</button>
+            <button class="btn btn-secondary" id="calibrateDayBtn" type="button">Sätt</button>
           </div>
+        </div>
+      </div>
+
+      <!-- 3. Google Firebase Molnsynk -->
+      <div class="input-group" style="background: rgba(15,23,42,0.45); padding: 16px; border-radius: 10px; border: 1px solid var(--card-border);">
+        <div style="font-weight: 600; margin-bottom: 6px; display:flex; justify-content:space-between;">
+          <span>3. Molnsynk (Google Firebase)</span>
+          <span id="fbStatusText" style="font-size:0.8rem; color:var(--muted);">Ej aktiv</span>
+        </div>
+        <label>
+          Firebase Realtime Database URL
+          <input type="text" id="fbUrlInput" placeholder="https://elkollen-donso-default-rtdb.europe-west1.firebasedatabase.app" value="https://elkollen-donso-default-rtdb.europe-west1.firebasedatabase.app" />
+        </label>
+        <label>
+          Hemligt mappnamn / nyckel (valfritt skydd)
+          <input type="text" id="fbSecretPathInput" placeholder="t.ex. donso_blekebacken_99" value="donso_energi" />
+        </label>
+        <div style="display:flex; gap:8px; margin-top: 12px; flex-wrap: wrap;">
+          <button class="btn" id="saveFbBtn" type="button">Anslut & Synka</button>
+          <button class="btn btn-secondary" id="clearFbBtn" type="button">Koppla från</button>
+        </div>
+        <div class="sub-value" id="fbFeedback" style="margin-top: 8px;">
+          Synkar månadshistoriken automatiskt mellan mobilen och datorn.
         </div>
       </div>
     </div>
 
     <div class="info-box">
-      <strong>Så här lagras din historik:</strong><br/>
-      • All dygns- och månadsdata lagras lokalt i webbläsarens <code>localStorage</code> under respektive datum (<code>YYYY-MM-DD</code>).<br/>
-      • När du fyller i en saknad dag i månadsöversikten hämtar sidan automatiskt det exakta spotpriset i SE3 för just det datumet och räknar fram totalkostnaden inklusive Ellevios nätavgift, energiskatt och moms.
+      <strong>Så här aktiverar du molnsynk mellan mobil och dator (Google Firebase):</strong><br/>
+      1. Skapa en gratis <strong>Realtime Database</strong> på <em>console.firebase.google.com</em> (välj Europa/Belgien och <em>Test mode</em>).<br/>
+      2. Klistra in databasens URL (utan <code>:null</code> på slutet) samt samma mappnamn i ruta 3 på både mobilen och datorn.<br/>
+      3. Nu synkas alla dagar i månadsöversikten och dagens ackumulerade förbrukning automatiskt mellan dina enheter!
     </div>
   </div>
 
   <script>
+    const DEFAULT_FB_URL = 'https://elkollen-donso-default-rtdb.europe-west1.firebasedatabase.app';
+
     let currentSpotOre = 0;
     let currentTotalSekPerKwh = 0;
     let hourlySpotOreArray = new Array(24).fill(50);
     let hourlyTempArray = new Array(24).fill(7);
     let hourlyWindArray = new Array(24).fill(5);
-    const historicalPriceCache = {}; // Cache för historiska spotpriser per datum (YYYY-MM-DD)
+    const historicalPriceCache = {};
 
     let liveWatts = 1400;
     let hwActive = false;
     let ngenicActive = false;
     let hwInterval = null;
+    let lastFirebasePushTime = 0;
 
     let priceChartInstance = null;
     let weatherChartInstance = null;
@@ -674,6 +704,98 @@
     function getTodayKey() {
       const now = new Date();
       return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }
+
+    function cleanFirebaseUrl(raw) {
+      return (raw || '')
+        .trim()
+        .replace(/:null$/i, '')
+        .replace(/\.json$/i, '')
+        .replace(/\/+$/, '');
+    }
+
+    // --- GOOGLE FIREBASE REALTIME DATABASE SYNC (REST API) ---
+    function getFirebaseEndpoint() {
+      const storedUrl = localStorage.getItem('elkollen_fb_url');
+      const rawUrl = cleanFirebaseUrl(storedUrl !== null ? storedUrl : DEFAULT_FB_URL);
+      const path = (localStorage.getItem('elkollen_fb_path') || 'donso_energi').trim().replace(/^\/+|\/+$/g, '');
+      if (!rawUrl) return null;
+      return `${rawUrl}/${path}/month_history.json`;
+    }
+
+    async function syncFromFirebase(showAlert = false) {
+      const endpoint = getFirebaseEndpoint();
+      if (!endpoint) return;
+
+      try {
+        const res = await fetch(endpoint);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const cloudData = await res.json();
+
+        const localData = loadMonthHistory();
+        const merged = { ...localData };
+
+        if (cloudData && typeof cloudData === 'object') {
+          Object.keys(cloudData).forEach(dateKey => {
+            const cEntry = cloudData[dateKey];
+            const lEntry = merged[dateKey];
+            if (!lEntry || (cEntry.updatedAt || 0) >= (lEntry.updatedAt || 0)) {
+              merged[dateKey] = cEntry;
+            }
+          });
+        }
+
+        localStorage.setItem('elkollen_month_history', JSON.stringify(merged));
+        renderMonthOverview();
+
+        const todayEntry = merged[getTodayKey()];
+        if (todayEntry && !hwActive) {
+          document.getElementById('todayKwhDisplay').textContent = todayEntry.kwh.toFixed(2).replace('.', ',') + ' kWh';
+          document.getElementById('todayCostDisplay').textContent = todayEntry.cost.toFixed(2).replace('.', ',') + ' kr';
+          document.getElementById('todayKwhSub').textContent = 'Synkat från molnet';
+        }
+
+        await pushToFirebase(merged, true);
+
+        document.getElementById('fbDot').className = 'status-dot';
+        document.getElementById('firebaseHeaderBadge').innerHTML = `<span class="status-dot"></span>Molnsynk: Aktiv`;
+        document.getElementById('fbStatusText').textContent = 'Ansluten';
+        document.getElementById('fbStatusText').style.color = 'var(--green)';
+        document.getElementById('fbFeedback').style.color = 'var(--muted)';
+        document.getElementById('fbFeedback').textContent = `Synkad kl. ${new Date().toLocaleTimeString('sv-SE')}`;
+
+        if (showAlert) {
+          document.getElementById('monthFeedback').style.color = 'var(--green)';
+          document.getElementById('monthFeedback').textContent = 'Synkat med Google Firebase!';
+        }
+      } catch (err) {
+        document.getElementById('fbDot').className = 'status-dot error';
+        document.getElementById('firebaseHeaderBadge').innerHTML = `<span class="status-dot error"></span>Molnsynk: Fel`;
+        document.getElementById('fbStatusText').textContent = 'Fel vid synk';
+        document.getElementById('fbStatusText').style.color = 'var(--red)';
+        document.getElementById('fbFeedback').style.color = 'var(--red)';
+        document.getElementById('fbFeedback').textContent = 'Kunde inte nå Firebase. Kontrollera URL och databasregler.';
+      }
+    }
+
+    async function pushToFirebase(historyObj, force = false) {
+      const endpoint = getFirebaseEndpoint();
+      if (!endpoint) return;
+
+      const now = Date.now();
+      if (!force && now - lastFirebasePushTime < 15000) return;
+      lastFirebasePushTime = now;
+
+      try {
+        await fetch(endpoint, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(historyObj)
+        });
+        document.getElementById('fbFeedback').textContent = `Molnsynkad kl. ${new Date().toLocaleTimeString('sv-SE')}`;
+      } catch (err) {
+        console.error('Firebase push fel:', err);
+      }
     }
 
     // --- AUTOMATISK BERÄKNING FÖR VALT DATUM I MÅNADSÖVERSIKTEN ---
@@ -689,7 +811,6 @@
         if (!res.ok) return null;
         const data = await res.json();
 
-        // Samla snitt per timme (0-23) oavsett om API:et returnerar 24 timmar eller 96 kvartar
         const hourBuckets = Array.from({ length: 24 }, () => []);
         data.forEach(entry => {
           const h = new Date(entry.time_start).getHours();
@@ -706,12 +827,11 @@
       }
     }
 
-    // Viktad förbrukningsprofil över dygnet (24h, summa = 1.0) så att dygnets dyrare/billigare timmar viktas realistiskt
     const HOURLY_LOAD_WEIGHTS = [
-      0.028, 0.026, 0.025, 0.025, 0.027, 0.032, // 00-05 (natt)
-      0.044, 0.052, 0.048, 0.042, 0.039, 0.038, // 06-11 (morgon & förmiddag)
-      0.038, 0.037, 0.038, 0.041, 0.048, 0.056, // 12-17 (eftermiddag)
-      0.060, 0.058, 0.052, 0.044, 0.034, 0.028  // 18-23 (kväll)
+      0.028, 0.026, 0.025, 0.025, 0.027, 0.032,
+      0.044, 0.052, 0.048, 0.042, 0.039, 0.038,
+      0.038, 0.037, 0.038, 0.041, 0.048, 0.056,
+      0.060, 0.058, 0.052, 0.044, 0.034, 0.028
     ];
 
     async function autoCalculateManualDayCost() {
@@ -749,17 +869,16 @@
         hintEl.textContent =
           `Beräknat för ${dateKey}: Viktat spotpris ${weightedSpotOre.toFixed(1).replace('.', ',')} öre/kWh → totalpris ${totalSekPerKwh.toFixed(2).replace('.', ',')} kr/kWh inkl. moms = ${calculatedCost.toFixed(2).replace('.', ',')} kr.`;
       } else {
-        // Fallback om framtida datum väljs där elpriser ännu inte publicerats
         const fallbackRate = currentTotalSekPerKwh || 1.60;
         const fallbackCost = kwh * fallbackRate;
         costInput.value = fallbackCost.toFixed(2);
         hintEl.style.color = 'var(--yellow)';
         hintEl.textContent =
-          `Inga publicerade spotpriser hittades för ${dateKey} (ev. framtida datum) – uppskattat med dagens taxa (${fallbackRate.toFixed(2).replace('.', ',')} kr/kWh).`;
+          `Inga publicerade spotpriser hittades för ${dateKey} – uppskattat med dagens taxa (${fallbackRate.toFixed(2).replace('.', ',')} kr/kWh).`;
       }
     }
 
-    // --- MÅNADSHISTORIK I LOCALSTORAGE ---
+    // --- MÅNADSHISTORIK ---
     function loadMonthHistory() {
       try {
         return JSON.parse(localStorage.getItem('elkollen_month_history') || '{}');
@@ -768,15 +887,17 @@
       }
     }
 
-    function saveDayToMonthHistory(dateKey, kwh, costSek, source = 'live') {
+    function saveDayToMonthHistory(dateKey, kwh, costSek, source = 'live', forceCloudPush = false) {
       const history = loadMonthHistory();
       history[dateKey] = {
         kwh: Number(kwh.toFixed(2)),
         cost: Number(costSek.toFixed(2)),
-        source
+        source,
+        updatedAt: Date.now()
       };
       localStorage.setItem('elkollen_month_history', JSON.stringify(history));
       renderMonthOverview();
+      pushToFirebase(history, forceCloudPush);
     }
 
     function selectDayInForm(dateKey) {
@@ -790,7 +911,7 @@
         document.getElementById('manualDayCost').value = entry.cost;
         document.getElementById('manualDayCalcHint').style.color = 'var(--muted)';
         document.getElementById('manualDayCalcHint').textContent =
-          `Sparat värde för ${dateKey}: ${entry.kwh.toFixed(1).replace('.', ',')} kWh • ${entry.cost.toFixed(2).replace('.', ',')} kr. Ändra kWh ovan för att räkna om automatiskt.`;
+          `Sparat värde för ${dateKey}: ${entry.kwh.toFixed(1).replace('.', ',')} kWh • ${entry.cost.toFixed(2).replace('.', ',')} kr.`;
       } else {
         document.getElementById('manualDayKwh').value = '';
         document.getElementById('manualDayCost').value = '';
@@ -935,7 +1056,7 @@
       });
     }
 
-    // --- VÄDER-, VIND- OCH ELPRISBASERAD SIMULERINGSMODELL (DONSÖ-VILLA) ---
+    // --- VÄDER-, VIND- OCH ELPRISBASERAD SIMULERINGSMODELL ---
     function calculateHourlySimulatedWatts(hour) {
       const scale = (Number(document.getElementById('simScaleSlider').value) || 100) / 100;
       const temp = hourlyTempArray[hour] !== undefined ? hourlyTempArray[hour] : 7;
@@ -1018,7 +1139,7 @@
       }
     }
 
-    // --- DAGENS ACKUMULERADE DATA (HOMEWIZARD P1) ---
+    // --- DAGENS ACKUMULERADE DATA ---
     function getDailyTracker(currentMeterImportKwh) {
       const todayKey = getTodayKey();
       const storedDate = localStorage.getItem('elkollen_day_date');
@@ -1081,7 +1202,7 @@
       document.getElementById('todayCostSub').textContent =
         `Snittpris idag: ${avgTodayPrice.toFixed(2).replace('.', ',')} kr/kWh inkl. moms`;
 
-      saveDayToMonthHistory(getTodayKey(), todayKwh, newCost, 'live');
+      saveDayToMonthHistory(getTodayKey(), todayKwh, newCost, 'live', false);
     }
 
     function toggleHwVersionUI() {
@@ -1098,6 +1219,9 @@
       const savedHwVer = localStorage.getItem('elkollen_hw_ver') || 'v2';
       const savedHwToken = localStorage.getItem('elkollen_hw_token') || '';
       const savedNgenicToken = localStorage.getItem('elkollen_ngenic_token');
+      const storedFbUrl = localStorage.getItem('elkollen_fb_url');
+      const savedFbUrl = storedFbUrl !== null ? cleanFirebaseUrl(storedFbUrl) : DEFAULT_FB_URL;
+      const savedFbPath = localStorage.getItem('elkollen_fb_path') || 'donso_energi';
 
       if (savedGrid) document.getElementById('gridFeeInput').value = savedGrid;
       if (savedTax) document.getElementById('taxInput').value = savedTax;
@@ -1108,11 +1232,18 @@
       document.getElementById('hwTokenInput').value = savedHwToken;
       toggleHwVersionUI();
 
+      document.getElementById('fbUrlInput').value = savedFbUrl;
+      document.getElementById('fbSecretPathInput').value = savedFbPath;
+
       const tracker = getDailyTracker(null);
       if (!isNaN(tracker.startImport) && !isNaN(tracker.lastImport)) {
         const kwh = Math.max(0, tracker.lastImport - tracker.startImport);
         document.getElementById('todayKwhDisplay').textContent = kwh.toFixed(2).replace('.', ',') + ' kWh';
         document.getElementById('todayCostDisplay').textContent = tracker.accumulatedCost.toFixed(2).replace('.', ',') + ' kr';
+      }
+
+      if (savedFbUrl) {
+        syncFromFirebase(false);
       }
 
       if (savedHwIp) {
@@ -1153,7 +1284,6 @@
 
       updateWeatherPriceSimulation();
 
-      // Uppdatera även manuell dagsberäkning om användaren har en kWh-siffra inskriven
       if (document.getElementById('manualDayKwh').value) {
         autoCalculateManualDayCost();
       }
@@ -1574,11 +1704,8 @@
     document.getElementById('markupInput').addEventListener('input', updateCalculator);
     document.getElementById('hwVersionSelect').addEventListener('change', toggleHwVersionUI);
     document.getElementById('pairHwBtn').addEventListener('click', pairHomeWizardV2);
-
-    // Trigga automatisk kostnadsuträkning direkt när man skriver kWh
     document.getElementById('manualDayKwh').addEventListener('input', autoCalculateManualDayCost);
 
-    // Spara manuellt inlagd dag i månadsöversikten
     document.getElementById('saveManualDayBtn').addEventListener('click', async () => {
       const dateKey = document.getElementById('manualDaySelect').value;
       const kwh = parseFloat(document.getElementById('manualDayKwh').value) || 0;
@@ -1590,7 +1717,7 @@
       }
       if (isNaN(cost)) cost = 0;
 
-      saveDayToMonthHistory(dateKey, kwh, cost, 'manual');
+      saveDayToMonthHistory(dateKey, kwh, cost, 'manual', true);
 
       if (dateKey === getTodayKey()) {
         localStorage.setItem('elkollen_day_cost_sek', String(cost));
@@ -1600,7 +1727,7 @@
 
       document.getElementById('monthFeedback').style.color = 'var(--green)';
       document.getElementById('monthFeedback').textContent =
-        `Sparade ${dateKey}: ${kwh.toFixed(1).replace('.', ',')} kWh / ${cost.toFixed(2).replace('.', ',')} kr.`;
+        `Sparade & molnsynkade ${dateKey}: ${kwh.toFixed(1).replace('.', ',')} kWh / ${cost.toFixed(2).replace('.', ',')} kr.`;
     });
 
     document.getElementById('deleteManualDayBtn').addEventListener('click', () => {
@@ -1608,29 +1735,43 @@
       const history = loadMonthHistory();
       delete history[dateKey];
       localStorage.setItem('elkollen_month_history', JSON.stringify(history));
+      renderMonthOverview();
+      pushToFirebase(history, true);
+
       document.getElementById('manualDayKwh').value = '';
       document.getElementById('manualDayCost').value = '';
-      renderMonthOverview();
       document.getElementById('monthFeedback').style.color = 'var(--muted)';
       document.getElementById('monthFeedback').textContent = `Raderade sparade värden för ${dateKey}.`;
     });
 
-    document.getElementById('exportDataBtn').addEventListener('click', () => {
-      const historyJson = localStorage.getItem('elkollen_month_history') || '{}';
-      const userAction = prompt(
-        'Här är din sparade historik (kopiera texten för backup, eller klistra in en tidigare backup och tryck OK):',
-        historyJson
-      );
-      if (userAction !== null && userAction !== historyJson) {
-        try {
-          const parsed = JSON.parse(userAction);
-          localStorage.setItem('elkollen_month_history', JSON.stringify(parsed));
-          renderMonthOverview();
-          alert('Historiken har importerats!');
-        } catch (e) {
-          alert('Ogiltigt format – ingen ändring gjordes.');
-        }
+    document.getElementById('syncNowBtn').addEventListener('click', () => {
+      if (!getFirebaseEndpoint()) {
+        alert('Fyll i din Firebase-URL längst ner på sidan först.');
+        return;
       }
+      syncFromFirebase(true);
+    });
+
+    document.getElementById('saveFbBtn').addEventListener('click', () => {
+      const url = cleanFirebaseUrl(document.getElementById('fbUrlInput').value);
+      const path = document.getElementById('fbSecretPathInput').value.trim() || 'donso_energi';
+      if (!url) return;
+
+      document.getElementById('fbUrlInput').value = url;
+      localStorage.setItem('elkollen_fb_url', url);
+      localStorage.setItem('elkollen_fb_path', path);
+      syncFromFirebase(true);
+    });
+
+    document.getElementById('clearFbBtn').addEventListener('click', () => {
+      localStorage.setItem('elkollen_fb_url', '');
+      localStorage.removeItem('elkollen_fb_path');
+      document.getElementById('fbUrlInput').value = '';
+      document.getElementById('fbDot').className = 'status-dot offline';
+      document.getElementById('firebaseHeaderBadge').innerHTML = `<span class="status-dot offline"></span>Molnsynk: Lokal`;
+      document.getElementById('fbStatusText').textContent = 'Ej aktiv';
+      document.getElementById('fbStatusText').style.color = 'var(--muted)';
+      document.getElementById('fbFeedback').textContent = 'Molnsynk frånkopplad.';
     });
 
     document.getElementById('calibrateDayBtn').addEventListener('click', () => {
@@ -1690,7 +1831,7 @@
       document.getElementById('ngenicTokenInput').value = '';
       document.getElementById('ngenicStatusText').textContent = 'Ej aktiv';
       document.getElementById('ngenicStatusText').style.color = 'var(--muted)';
-      document.getElementById('ngenicDataBox').textContent = 'Visar innetemperatur, börvärde och aktiv elprisstyrning när den är ansluten.';
+      document.getElementById('ngenicDataBox').textContent = 'Visar innetemperatur och börvärde när den är ansluten.';
       document.getElementById('ngenicMiniStatus').textContent = 'Ngenic: Ej ansluten';
       updateCalculator();
     });
