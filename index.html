@@ -16,6 +16,7 @@
       --green: #22c55e;
       --yellow: #eab308;
       --red: #ef4444;
+      --purple: #a855f7;
     }
 
     * {
@@ -29,7 +30,7 @@
       background-color: var(--bg);
       color: var(--text);
       padding: 20px;
-      max-width: 1150px;
+      max-width: 1180px;
       margin: 0 auto;
     }
 
@@ -61,11 +62,24 @@
       font-weight: 600;
     }
 
+    /* 4 kolumner på desktop så att de 8 nyckeltalskorten bildar 2 jämna rader */
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: repeat(4, 1fr);
       gap: 16px;
       margin-bottom: 24px;
+    }
+
+    @media (max-width: 960px) {
+      .grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 540px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     .card {
@@ -77,14 +91,14 @@
 
     .card-title {
       color: var(--muted);
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       margin-bottom: 8px;
     }
 
     .big-value {
-      font-size: 1.9rem;
+      font-size: 1.85rem;
       font-weight: 700;
     }
 
@@ -160,11 +174,15 @@
 
     .slider-box {
       margin-top: 14px;
+      background: rgba(15, 23, 42, 0.45);
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--card-border);
     }
 
     input[type="range"] {
       width: 100%;
-      margin: 12px 0;
+      margin: 10px 0 4px 0;
       accent-color: var(--accent);
     }
 
@@ -173,6 +191,7 @@
       gap: 12px;
       margin-top: 12px;
       flex-wrap: wrap;
+      align-items: flex-end;
     }
 
     .settings-row label, .input-group label {
@@ -256,6 +275,51 @@
       color: var(--text);
     }
 
+    .sim-summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .sim-stat {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--card-border);
+      padding: 10px 12px;
+      border-radius: 8px;
+    }
+
+    .sim-stat-label {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .sim-stat-val {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .month-controls {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid var(--card-border);
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+
+    .month-controls label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      flex: 1;
+      min-width: 140px;
+    }
+
     .info-box {
       background: rgba(56, 189, 248, 0.08);
       border: 1px solid rgba(56, 189, 248, 0.25);
@@ -297,53 +361,67 @@
     </div>
   </header>
 
-  <!-- Nyckeltal: 6 kort för realtid, idag och priser -->
+  <!-- Nyckeltal: 8 kort i ett jämnt 4x2-rutnät -->
   <div class="grid">
-    <!-- 1. Effektuttag just nu -->
+    <!-- Rad 1, Kort 1: Effektuttag just nu -->
     <div class="card">
       <div class="card-title" id="powerCardTitle">Effektuttag just nu</div>
-      <div class="big-value" id="liveWattDisplay">2 000 W</div>
+      <div class="big-value" id="liveWattDisplay">-- W</div>
       <div class="phase-pills" id="phasePills" style="display:none;">
         <span class="pill" id="l1Pill">L1: -- W</span>
         <span class="pill" id="l2Pill">L2: -- W</span>
         <span class="pill" id="l3Pill">L3: -- W</span>
       </div>
-      <div class="sub-value" id="powerSubLabel">Simulerat (koppla HomeWizard nedan)</div>
+      <div class="sub-value" id="powerSubLabel">Beräknat utifrån temperatur & vind</div>
     </div>
 
-    <!-- 2. Kostnad just nu -->
+    <!-- Rad 1, Kort 2: Kostnad just nu -->
     <div class="card">
-      <div class="card-title">Kostnad just nu</div>
+      <div class="card-title" id="costNowTitle">Kostnad just nu</div>
       <div class="big-value" id="liveCostPerHour" style="color: var(--green);">-- kr/h</div>
-      <div class="sub-value" id="liveTickIndicator">Uppdateras var 3:e sekund</div>
+      <div class="sub-value" id="liveTickIndicator">Baserat på aktuellt timpris</div>
     </div>
 
-    <!-- 3. Dagens förbrukning -->
+    <!-- Rad 1, Kort 3: Dagens förbrukning -->
     <div class="card">
       <div class="card-title">Dagens förbrukning</div>
       <div class="big-value" id="todayKwhDisplay" style="color: var(--accent);">0,00 kWh</div>
-      <div class="sub-value" id="todayKwhSub">Väntar på mätarvärde...</div>
+      <div class="sub-value" id="todayKwhSub">Väntar på HomeWizard P1...</div>
     </div>
 
-    <!-- 4. Dagens kostnad -->
+    <!-- Rad 1, Kort 4: Dagens kostnad -->
     <div class="card">
       <div class="card-title">Dagens kostnad</div>
       <div class="big-value" id="todayCostDisplay" style="color: var(--yellow);">0,00 kr</div>
       <div class="sub-value" id="todayCostSub">Ackumulerat inkl. elnät, skatt & moms</div>
     </div>
 
-    <!-- 5. Spotpris just nu -->
+    <!-- Rad 2, Kort 5: Spotpris just nu -->
     <div class="card">
       <div class="card-title">Spotpris just nu (exkl. moms)</div>
       <div class="big-value" id="currentSpot">-- öre</div>
       <div class="sub-value" id="currentHourLabel">Timme: --:--</div>
     </div>
 
-    <!-- 6. Totalpris per kWh -->
+    <!-- Rad 2, Kort 6: Totalpris per kWh -->
     <div class="card">
       <div class="card-title">Totalpris inkl. Ellevio & Skatt</div>
       <div class="big-value" id="currentTotal">-- kr/kWh</div>
       <div class="sub-value" id="ngenicMiniStatus">Ngenic: Ej ansluten</div>
+    </div>
+
+    <!-- Rad 2, Kort 7 (under Dagens förbrukning): Månadens total hittills -->
+    <div class="card">
+      <div class="card-title" id="monthCardTitle">Månaden hittills</div>
+      <div class="big-value" id="monthTotalCostCard" style="color: var(--purple);">0,00 kr</div>
+      <div class="sub-value" id="monthTotalSubCard">0,0 kWh • 0 sparade dagar</div>
+    </div>
+
+    <!-- Rad 2, Kort 8 (under Dagens kostnad): Dagens estimat (Väder + Vind + Elpris) -->
+    <div class="card">
+      <div class="card-title">Dagens estimat (Väder & Pris)</div>
+      <div class="big-value" id="estDayCostCard" style="color: var(--accent);">-- kr</div>
+      <div class="sub-value" id="estDaySubCard">Estimerat ~-- kWh idag (Donsö)</div>
     </div>
   </div>
 
@@ -368,7 +446,40 @@
     </div>
   </div>
 
-  <!-- Kontrollrummet & Kalkylator -->
+  <!-- Månadsöversikt dag-för-dag (Lika stor ruta som vädergrafen) -->
+  <div class="chart-container">
+    <div class="chart-header">
+      <div class="card-title" style="margin-bottom: 0;" id="monthChartHeading">Månadens elkostnad dag-för-dag (kr inkl. elnät, skatt & moms)</div>
+      <div class="sub-value" id="monthChartSummary" style="margin-top: 0; color: var(--yellow); font-weight: 700;">Totalt hittills: 0,00 kr (0,0 kWh)</div>
+    </div>
+    <div class="chart-wrapper">
+      <canvas id="monthChart"></canvas>
+    </div>
+
+    <!-- Manuellt formulär för att fylla i saknade dagar eller ta backup -->
+    <div class="month-controls">
+      <label>
+        Välj dag i månaden
+        <select id="manualDaySelect"></select>
+      </label>
+      <label>
+        Förbrukning den dagen (kWh)
+        <input type="number" id="manualDayKwh" placeholder="t.ex. 32.5" step="0.1" />
+      </label>
+      <label>
+        Kostnad den dagen (kr inkl. allt)
+        <input type="number" id="manualDayCost" placeholder="t.ex. 58.40" step="0.1" />
+      </label>
+      <button class="btn" id="saveManualDayBtn" type="button">Spara dag</button>
+      <button class="btn btn-secondary" id="deleteManualDayBtn" type="button">Radera dag</button>
+      <button class="btn btn-secondary" id="exportDataBtn" type="button" title="Kopiera eller spara all historik som backup">💾 Backup</button>
+    </div>
+    <div class="sub-value" id="monthFeedback" style="margin-top: 8px;">
+      Dagens värden sparas automatiskt i webbläsaren. Saknas historik för tidigare dagar i månaden kan du fylla i dem ovan så uppdateras staplarna och månadstotalen direkt.
+    </div>
+  </div>
+
+  <!-- Kontrollrummet & Väderbaserad Simulator -->
   <div class="two-col">
     <!-- Kontrollrummet / Kraftläget -->
     <div class="card">
@@ -409,17 +520,33 @@
       </a>
     </div>
 
-    <!-- Realtidssimulator & Egen taxa -->
+    <!-- Taxa & Väder-/Prisbaserad Kostnadssimulator -->
     <div class="card">
-      <div class="card-title">Taxa & Manuell Effekt-simulator</div>
-      <div class="sub-value">Justera dina fasta avgifter för Ellevio & Bixia (sparas lokalt)</div>
+      <div class="card-title">Taxa & Väderbaserad Kostnadssimulator</div>
+      <div class="sub-value">
+        Beräknar husets förbrukning och kostnad timme för timme utifrån Donsös temperatur, vind (m/s) och dagens spotpriser när HomeWizard är frånkopplad.
+      </div>
+
+      <div class="sim-summary-grid">
+        <div class="sim-stat">
+          <div class="sim-stat-label">Simulerad kostnad just nu</div>
+          <div class="sim-stat-val" id="simBoxNowCost" style="color: var(--green);">-- kr/h (-- W)</div>
+        </div>
+        <div class="sim-stat">
+          <div class="sim-stat-label">Estimerad totalkostnad idag</div>
+          <div class="sim-stat-val" id="simBoxDayTotal" style="color: var(--accent);">-- kr (-- kWh)</div>
+        </div>
+      </div>
 
       <div class="slider-box" id="simulatorBox">
-        <div style="display:flex; justify-content:space-between; font-weight:600; font-size:0.9rem;">
-          <span>Simulerat effektuttag (när HomeWizard är offline):</span>
-          <span id="wattDisplay" style="color: var(--accent);">2 000 W</span>
+        <div style="display:flex; justify-content:space-between; font-weight:600; font-size:0.85rem;">
+          <span>Finjustera husets förbrukningsprofil:</span>
+          <span id="simScaleLabel" style="color: var(--accent);">100 % (Standard Donsö-villa)</span>
         </div>
-        <input type="range" id="wattSlider" min="100" max="15000" step="100" value="2000" />
+        <input type="range" id="simScaleSlider" min="50" max="150" step="5" value="100" />
+        <div class="sub-value" style="margin-top:0; font-size:0.76rem;" id="simWeatherFactorText">
+          Väderfaktor just nu: Laddar temperatur och vind...
+        </div>
       </div>
 
       <div class="settings-row">
@@ -506,7 +633,7 @@
         <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--card-border);">
           <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 4px;">Kalibrera dagens ackumulerade värden</div>
           <div class="sub-value" style="font-size: 0.78rem;">
-            Webbläsaren sparar automatiskt dagens startvärde och bygger på förbrukning & kostnad var 3:e sekund. Vill du synka mot HomeWizard-appen mitt på dagen kan du fylla i hur många kWh som redan gått åt idag:
+            Synka dagens löpande kWh mot HomeWizard-appen om du ansluter mitt på dagen (uppdaterar även dagens stapel i månadsöversikten):
           </div>
           <div style="display:flex; gap:8px; margin-top: 8px; align-items: flex-end;">
             <label style="margin-top:0;">
@@ -520,29 +647,296 @@
     </div>
 
     <div class="info-box">
-      <strong>Så här fungerar realtidsberäkningen för hela dagen:</strong><br/>
-      • <strong>Synkad uppdatering (var 3:e sekund):</strong> Varje gång P1-mätaren läses av (var 3:e sekund) uppdateras <em>Effektuttag</em>, <em>Kostnad just nu</em>, <em>Dagens förbrukning</em> och <em>Dagens kostnad</em> samtidigt.<br/>
-      • <strong>Exakt timpris-summering:</strong> För varje 3-sekundersintervall räknas den faktiska energin som förbrukats ut och multipliceras med det aktuella timpriset (inkl. Ellevio, energiskatt och moms). Dagens nollställning sker automatiskt vid midnatt (00:00).
+      <strong>Så här lagras din historik:</strong><br/>
+      • All dygns- och månadsdata lagras lokalt i webbläsarens <code>localStorage</code> under respektive datum (<code>YYYY-MM-DD</code>).<br/>
+      • Så länge HomeWizard är inkopplad växer dagens stapel i månadsöversikten i realtid. När HomeWizard och Ngenic är frånkopplade använder sidan automatiskt väder- och elprismodellen för Donsö för att simulera både kostnad just nu och hela dagens totalkostnad.
     </div>
   </div>
 
   <script>
     let currentSpotOre = 0;
     let currentTotalSekPerKwh = 0;
-    let liveWatts = 2000;
+    let hourlySpotOreArray = new Array(24).fill(50);
+    let hourlyTempArray = new Array(24).fill(7);
+    let hourlyWindArray = new Array(24).fill(5);
+    let weatherLoaded = false;
+    let pricesLoaded = false;
+
+    let liveWatts = 1400;
     let hwActive = false;
+    let ngenicActive = false;
     let hwInterval = null;
+
     let priceChartInstance = null;
     let weatherChartInstance = null;
+    let monthChartInstance = null;
     let lastKnownHour = new Date().getHours();
 
-    // Hämta dagens datumnyckel (YYYY-MM-DD)
     function getTodayKey() {
       const now = new Date();
       return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     }
 
-    // Ladda eller initiera dagens ackumulerade data i localStorage
+    function getMonthPrefix() {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    // --- MÅNADSHISTORIK I LOCALSTORAGE ---
+    function loadMonthHistory() {
+      try {
+        return JSON.parse(localStorage.getItem('elkollen_month_history') || '{}');
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function saveDayToMonthHistory(dateKey, kwh, costSek, source = 'live') {
+      const history = loadMonthHistory();
+      history[dateKey] = {
+        kwh: Number(kwh.toFixed(2)),
+        cost: Number(costSek.toFixed(2)),
+        source
+      };
+      localStorage.setItem('elkollen_month_history', JSON.stringify(history));
+      renderMonthOverview();
+    }
+
+    function populateManualDayDropdown() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const select = document.getElementById('manualDaySelect');
+      select.innerHTML = '';
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const opt = document.createElement('option');
+        opt.value = dateKey;
+        opt.textContent = `${d} ${now.toLocaleDateString('sv-SE', { month: 'short' })}`;
+        if (d === now.getDate()) opt.selected = true;
+        select.appendChild(opt);
+      }
+
+      select.addEventListener('change', () => {
+        const hist = loadMonthHistory();
+        const entry = hist[select.value];
+        document.getElementById('manualDayKwh').value = entry ? entry.kwh : '';
+        document.getElementById('manualDayCost').value = entry ? entry.cost : '';
+      });
+    }
+
+    function renderMonthOverview() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const monthName = now.toLocaleDateString('sv-SE', { month: 'long', year: 'numeric' });
+      const todayKey = getTodayKey();
+      const history = loadMonthHistory();
+
+      document.getElementById('monthChartHeading').textContent =
+        `Månadens elkostnad dag-för-dag – ${monthName} (kr inkl. allt)`;
+      document.getElementById('monthCardTitle').textContent =
+        `Månaden hittills (${now.toLocaleDateString('sv-SE', { month: 'short' })})`;
+
+      const labels = [];
+      const costValues = [];
+      const kwhValues = [];
+      const barColors = [];
+
+      let totalMonthCost = 0;
+      let totalMonthKwh = 0;
+      let loggedDaysCount = 0;
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        labels.push(`${d}/${month + 1}`);
+
+        const entry = history[dateKey];
+        if (entry && (entry.cost > 0 || entry.kwh > 0)) {
+          costValues.push(entry.cost);
+          kwhValues.push(entry.kwh);
+          totalMonthCost += entry.cost;
+          totalMonthKwh += entry.kwh;
+          loggedDaysCount++;
+
+          if (dateKey === todayKey) {
+            barColors.push('#38bdf8'); // Idag i klarblått
+          } else if (entry.source === 'manual') {
+            barColors.push('rgba(168, 85, 247, 0.75)'); // Manuellt inlagd dag i lila
+          } else {
+            barColors.push('rgba(34, 197, 94, 0.75)'); // Automatiskt loggad dag i grönt
+          }
+        } else {
+          costValues.push(0);
+          kwhValues.push(0);
+          barColors.push('rgba(148, 163, 184, 0.15)');
+        }
+      }
+
+      document.getElementById('monthChartSummary').textContent =
+        `Totalt hittills: ${totalMonthCost.toFixed(2).replace('.', ',')} kr (${totalMonthKwh.toFixed(1).replace('.', ',')} kWh)`;
+      document.getElementById('monthTotalCostCard').textContent =
+        `${totalMonthCost.toFixed(2).replace('.', ',')} kr`;
+
+      const avgPerDay = loggedDaysCount > 0 ? (totalMonthCost / loggedDaysCount) : 0;
+      document.getElementById('monthTotalSubCard').textContent =
+        `${totalMonthKwh.toFixed(1).replace('.', ',')} kWh • ${loggedDaysCount} dgr (snitt ${avgPerDay.toFixed(0)} kr/dag)`;
+
+      const ctx = document.getElementById('monthChart').getContext('2d');
+      if (monthChartInstance) monthChartInstance.destroy();
+
+      monthChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Kostnad (kr)',
+            data: costValues,
+            backgroundColor: barColors,
+            borderRadius: 5
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          onClick: (evt, elements) => {
+            if (elements.length > 0) {
+              const idx = elements[0].index;
+              const dayNum = idx + 1;
+              const clickedKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+              document.getElementById('manualDaySelect').value = clickedKey;
+              const entry = history[clickedKey];
+              document.getElementById('manualDayKwh').value = entry ? entry.kwh : '';
+              document.getElementById('manualDayCost').value = entry ? entry.cost : '';
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const idx = ctx.dataIndex;
+                  const cost = costValues[idx];
+                  const kwh = kwhValues[idx];
+                  if (cost === 0 && kwh === 0) return 'Ingen data sparad (klicka på stapeln för att fylla i)';
+                  return `${cost.toFixed(2).replace('.', ',')} kr (${kwh.toFixed(1).replace('.', ',')} kWh)`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: '#94a3b8', maxRotation: 0 }
+            },
+            y: {
+              beginAtZero: true,
+              grid: { color: '#334155' },
+              ticks: {
+                color: '#94a3b8',
+                callback: (val) => val + ' kr'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // --- VÄDER-, VIND- OCH ELPRISBASERAD SIMULERINGSMODELL (DONSÖ-VILLA) ---
+    function calculateHourlySimulatedWatts(hour) {
+      const scale = (Number(document.getElementById('simScaleSlider').value) || 100) / 100;
+      const temp = hourlyTempArray[hour] !== undefined ? hourlyTempArray[hour] : 7;
+      const wind = hourlyWindArray[hour] !== undefined ? hourlyWindArray[hour] : 5;
+      const spotOre = hourlySpotOreArray[hour] !== undefined ? hourlySpotOreArray[hour] : 50;
+
+      // 1. Baslast (kyl/frys, ventilation, nätverk, standby) ~ 380 W
+      let watts = 380;
+
+      // 2. Uppvärmningsbehov (Nibe värmepump) vid temperatur under 19 °C
+      if (temp < 19) {
+        const deltaT = 19 - temp;
+        watts += deltaT * 75; // ca 75 W per grad under 19 °C
+      }
+
+      // 3. Vindavkylning på Donsö (över 4 m/s ökar värmeförlusterna)
+      if (wind > 4 && temp < 16) {
+        watts += (wind - 4) * 35;
+      }
+
+      // 4. Hushållsprofil över dygnet (morgon & kvällsaktivitet)
+      if (hour >= 6 && hour <= 8) watts += 450;
+      else if (hour >= 17 && hour <= 21) watts += 750;
+      else if (hour >= 9 && hour <= 16) watts += 250;
+
+      // 5. Smart elprisstyrning (dämpar värme vid pristoppar > 100 öre, förvärmer vid < 35 öre)
+      if (spotOre > 100) watts *= 0.82;
+      else if (spotOre < 35) watts *= 1.15;
+
+      return Math.round(watts * scale);
+    }
+
+    function updateWeatherPriceSimulation() {
+      const scalePct = Number(document.getElementById('simScaleSlider').value) || 100;
+      localStorage.setItem('elkollen_sim_scale', String(scalePct));
+      document.getElementById('simScaleLabel').textContent = `${scalePct} % (Justera profil)`;
+
+      const gridFee = Number(document.getElementById('gridFeeInput').value) || 0;
+      const tax = Number(document.getElementById('taxInput').value) || 0;
+      const markup = Number(document.getElementById('markupInput').value) || 0;
+
+      const currentHour = new Date().getHours();
+      let totalEstDayKwh = 0;
+      let totalEstDayCost = 0;
+
+      for (let h = 0; h < 24; h++) {
+        const w = calculateHourlySimulatedWatts(h);
+        const kwh = w / 1000;
+        const spot = hourlySpotOreArray[h] !== undefined ? hourlySpotOreArray[h] : currentSpotOre;
+        const hourSekPerKwh = ((spot + gridFee + tax + markup) / 100) * 1.25;
+
+        totalEstDayKwh += kwh;
+        totalEstDayCost += kwh * hourSekPerKwh;
+      }
+
+      const simNowWatts = calculateHourlySimulatedWatts(currentHour);
+      const simNowCostPerHour = (simNowWatts / 1000) * currentTotalSekPerKwh;
+
+      // Uppdatera simulatorrutan
+      document.getElementById('simBoxNowCost').textContent =
+        `${simNowCostPerHour.toFixed(2).replace('.', ',')} kr/h (${simNowWatts.toLocaleString('sv-SE')} W)`;
+      document.getElementById('simBoxDayTotal').textContent =
+        `${totalEstDayCost.toFixed(2).replace('.', ',')} kr (${totalEstDayKwh.toFixed(1).replace('.', ',')} kWh)`;
+
+      const curTemp = hourlyTempArray[currentHour];
+      const curWind = hourlyWindArray[currentHour];
+      document.getElementById('simWeatherFactorText').textContent =
+        `Just nu på Donsö: ${curTemp.toFixed(1).replace('.', ',')} °C och ${curWind.toFixed(1).replace('.', ',')} m/s → beräknat effektbehov ${simNowWatts.toLocaleString('sv-SE')} W.`;
+
+      // Uppdatera Kort 8 (Dagens estimat)
+      document.getElementById('estDayCostCard').textContent =
+        `${totalEstDayCost.toFixed(2).replace('.', ',')} kr`;
+      document.getElementById('estDaySubCard').textContent =
+        `Estimerat ~${totalEstDayKwh.toFixed(1).replace('.', ',')} kWh idag (Donsö)`;
+
+      // Om varken HomeWizard eller Ngenic styr live-värdet, visa simulerad kostnad & effekt i toppkorten
+      if (!hwActive && !ngenicActive) {
+        liveWatts = simNowWatts;
+        document.getElementById('powerCardTitle').textContent = 'Effektuttag just nu (Simulerat)';
+        document.getElementById('liveWattDisplay').textContent = `${liveWatts.toLocaleString('sv-SE')} W`;
+        document.getElementById('powerSubLabel').textContent =
+          `Vädermodell: ${curTemp.toFixed(1).replace('.', ',')} °C • ${curWind.toFixed(1).replace('.', ',')} m/s`;
+        document.getElementById('costNowTitle').textContent = 'Simulerad kostnad just nu';
+        document.getElementById('liveCostPerHour').textContent =
+          `${simNowCostPerHour.toFixed(2).replace('.', ',')} kr/h`;
+        document.getElementById('liveTickIndicator').textContent =
+          `Estimat kl. ${String(currentHour).padStart(2, '0')}:00–${String((currentHour + 1) % 24).padStart(2, '0')}:00`;
+      }
+    }
+
+    // --- DAGENS ACKUMULERADE DATA (HOMEWIZARD P1) ---
     function getDailyTracker(currentMeterImportKwh) {
       const todayKey = getTodayKey();
       const storedDate = localStorage.getItem('elkollen_day_date');
@@ -577,7 +971,6 @@
       return { startImport, lastImport, accumulatedCost };
     }
 
-    // Uppdatera dagens kWh och kostnad vid varje 3-sekunders poll
     function updateDailyStatsFromMeter(currentMeterImportKwh, currentWatts) {
       if (currentMeterImportKwh === undefined || currentMeterImportKwh === null) return;
 
@@ -605,6 +998,9 @@
       const avgTodayPrice = todayKwh > 0 ? (newCost / todayKwh) : currentTotalSekPerKwh;
       document.getElementById('todayCostSub').textContent =
         `Snittpris idag: ${avgTodayPrice.toFixed(2).replace('.', ',')} kr/kWh inkl. moms`;
+
+      // Spara dagens löpande siffra direkt till månadsöversikten
+      saveDayToMonthHistory(getTodayKey(), todayKwh, newCost, 'live');
     }
 
     function toggleHwVersionUI() {
@@ -616,6 +1012,7 @@
       const savedGrid = localStorage.getItem('elkollen_grid');
       const savedTax = localStorage.getItem('elkollen_tax');
       const savedMarkup = localStorage.getItem('elkollen_markup');
+      const savedScale = localStorage.getItem('elkollen_sim_scale');
       const savedHwIp = localStorage.getItem('elkollen_hw_ip');
       const savedHwVer = localStorage.getItem('elkollen_hw_ver') || 'v2';
       const savedHwToken = localStorage.getItem('elkollen_hw_token') || '';
@@ -624,6 +1021,7 @@
       if (savedGrid) document.getElementById('gridFeeInput').value = savedGrid;
       if (savedTax) document.getElementById('taxInput').value = savedTax;
       if (savedMarkup) document.getElementById('markupInput').value = savedMarkup;
+      if (savedScale) document.getElementById('simScaleSlider').value = savedScale;
 
       document.getElementById('hwVersionSelect').value = savedHwVer;
       document.getElementById('hwTokenInput').value = savedHwToken;
@@ -663,12 +1061,6 @@
     function updateCalculator() {
       saveFeeSettings();
 
-      if (!hwActive) {
-        liveWatts = Number(document.getElementById('wattSlider').value);
-        document.getElementById('wattDisplay').textContent = liveWatts.toLocaleString('sv-SE') + ' W';
-        document.getElementById('liveWattDisplay').textContent = liveWatts.toLocaleString('sv-SE') + ' W';
-      }
-
       const gridFee = Number(document.getElementById('gridFeeInput').value) || 0;
       const tax = Number(document.getElementById('taxInput').value) || 0;
       const markup = Number(document.getElementById('markupInput').value) || 0;
@@ -678,9 +1070,14 @@
 
       document.getElementById('currentTotal').textContent = currentTotalSekPerKwh.toFixed(2).replace('.', ',') + ' kr/kWh';
 
-      const kw = liveWatts / 1000;
-      const costPerHour = kw * currentTotalSekPerKwh;
-      document.getElementById('liveCostPerHour').textContent = costPerHour.toFixed(2).replace('.', ',') + ' kr/h';
+      updateWeatherPriceSimulation();
+
+      if (hwActive) {
+        const kw = liveWatts / 1000;
+        const costPerHour = kw * currentTotalSekPerKwh;
+        document.getElementById('costNowTitle').textContent = 'Kostnad just nu';
+        document.getElementById('liveCostPerHour').textContent = costPerHour.toFixed(2).replace('.', ',') + ' kr/h';
+      }
     }
 
     async function pairHomeWizardV2() {
@@ -785,7 +1182,7 @@
           ? `Kunde inte nå <code>https://${cleanIp}/api/measurement</code>. Kontrollera token och att du godkänt certifikatet på <a href="https://${cleanIp}/api" target="_blank" style="color:var(--accent);">https://${cleanIp}/api</a>.`
           : 'Kunde inte nå mätaren via HTTP. Kontrollera IP, Local API i appen eller byt till API v2 (HTTPS).';
         document.getElementById('phasePills').style.display = 'none';
-        document.getElementById('powerCardTitle').textContent = 'Effektuttag (Simulerat)';
+        updateCalculator();
       }
     }
 
@@ -820,6 +1217,7 @@
         const rooms = await roomsRes.json();
         const activeRoom = rooms.find(r => r.activeControl) || rooms[0];
 
+        ngenicActive = true;
         document.getElementById('ngenicStatusText').textContent = 'Ansluten';
         document.getElementById('ngenicStatusText').style.color = 'var(--green)';
 
@@ -830,7 +1228,9 @@
           document.getElementById('ngenicMiniStatus').textContent =
             `Ngenic (${activeRoom.name}): Mål ${targetTemp} °C`;
         }
+        updateCalculator();
       } catch (err) {
+        ngenicActive = false;
         document.getElementById('ngenicStatusText').textContent = 'Fel vid anslutning';
         document.getElementById('ngenicStatusText').style.color = 'var(--red)';
         document.getElementById('ngenicDataBox').textContent =
@@ -867,6 +1267,7 @@
           const hour = entryDate.getHours();
           const ore = Number((entry.SEK_per_kWh * 100).toFixed(1));
 
+          hourlySpotOreArray[hour] = ore;
           labels.push(`${String(hour).padStart(2, '0')}:00`);
           pricesOre.push(ore);
 
@@ -889,6 +1290,7 @@
           }
         });
 
+        pricesLoaded = true;
         const avgPrice = (sumPrice / data.length).toFixed(1);
         document.getElementById('minMaxSpot').textContent =
           `${minPrice.toFixed(0)} / ${maxPrice.toFixed(0)} öre`;
@@ -968,21 +1370,26 @@
           const t = Number(data.hourly.temperature_2m[idx].toFixed(1));
           const w = Number(data.hourly.wind_speed_10m[idx].toFixed(1));
 
+          hourlyTempArray[hour] = t;
+          hourlyWindArray[hour] = w;
+
           labels.push(`${String(hour).padStart(2, '0')}:00`);
           temps.push(t);
           winds.push(w);
 
           if (hour === currentHour) {
-            tempColors.push('#eab308'); // Aktuell timme markerad i gult
+            tempColors.push('#eab308');
             document.getElementById('weatherNowBadge').textContent =
               `Just nu Donsö: ${t.toFixed(1).replace('.', ',')} °C • ${w.toFixed(1).replace('.', ',')} m/s`;
           } else if (t <= 0) {
-            tempColors.push('rgba(129, 140, 248, 0.75)'); // Minusgrader
+            tempColors.push('rgba(129, 140, 248, 0.75)');
           } else {
-            tempColors.push('rgba(56, 189, 248, 0.65)'); // Plusgrader
+            tempColors.push('rgba(56, 189, 248, 0.65)');
           }
         });
 
+        weatherLoaded = true;
+        updateCalculator();
         renderWeatherChart(labels, temps, winds, tempColors);
       } catch (err) {
         document.getElementById('weatherNowBadge').textContent = 'Kunde inte hämta väderdata';
@@ -1074,14 +1481,72 @@
       });
     }
 
-    // Event listeners
-    document.getElementById('wattSlider').addEventListener('input', updateCalculator);
+    // --- EVENT LISTENERS ---
+    document.getElementById('simScaleSlider').addEventListener('input', updateCalculator);
     document.getElementById('gridFeeInput').addEventListener('input', updateCalculator);
     document.getElementById('taxInput').addEventListener('input', updateCalculator);
     document.getElementById('markupInput').addEventListener('input', updateCalculator);
     document.getElementById('hwVersionSelect').addEventListener('change', toggleHwVersionUI);
     document.getElementById('pairHwBtn').addEventListener('click', pairHomeWizardV2);
 
+    // Spara manuellt inlagd dag i månadsöversikten
+    document.getElementById('saveManualDayBtn').addEventListener('click', () => {
+      const dateKey = document.getElementById('manualDaySelect').value;
+      const kwh = parseFloat(document.getElementById('manualDayKwh').value) || 0;
+      let cost = parseFloat(document.getElementById('manualDayCost').value);
+
+      // Om man bara fyller i kWh men lämnar kostnad tom, räkna ut ungefärlig kostnad med aktuell taxa
+      if (isNaN(cost) && kwh > 0) {
+        cost = kwh * (currentTotalSekPerKwh || 1.5);
+      }
+      if (isNaN(cost)) cost = 0;
+
+      saveDayToMonthHistory(dateKey, kwh, cost, 'manual');
+
+      // Om det är dagens datum som ändrades, uppdatera även dagens ackumulerade kort
+      if (dateKey === getTodayKey()) {
+        localStorage.setItem('elkollen_day_cost_sek', String(cost));
+        document.getElementById('todayKwhDisplay').textContent = kwh.toFixed(2).replace('.', ',') + ' kWh';
+        document.getElementById('todayCostDisplay').textContent = cost.toFixed(2).replace('.', ',') + ' kr';
+      }
+
+      document.getElementById('monthFeedback').style.color = 'var(--green)';
+      document.getElementById('monthFeedback').textContent =
+        `Sparade ${dateKey}: ${kwh.toFixed(1).replace('.', ',')} kWh / ${cost.toFixed(2).replace('.', ',')} kr.`;
+    });
+
+    document.getElementById('deleteManualDayBtn').addEventListener('click', () => {
+      const dateKey = document.getElementById('manualDaySelect').value;
+      const history = loadMonthHistory();
+      delete history[dateKey];
+      localStorage.setItem('elkollen_month_history', JSON.stringify(history));
+      document.getElementById('manualDayKwh').value = '';
+      document.getElementById('manualDayCost').value = '';
+      renderMonthOverview();
+      document.getElementById('monthFeedback').style.color = 'var(--muted)';
+      document.getElementById('monthFeedback').textContent = `Raderade sparade värden för ${dateKey}.`;
+    });
+
+    // Exportera / Importera JSON-backup
+    document.getElementById('exportDataBtn').addEventListener('click', () => {
+      const historyJson = localStorage.getItem('elkollen_month_history') || '{}';
+      const userAction = prompt(
+        'Här är din sparade historik (kopiera texten för backup, eller klistra in en tidigare backup och tryck OK):',
+        historyJson
+      );
+      if (userAction !== null && userAction !== historyJson) {
+        try {
+          const parsed = JSON.parse(userAction);
+          localStorage.setItem('elkollen_month_history', JSON.stringify(parsed));
+          renderMonthOverview();
+          alert('Historiken har importerats!');
+        } catch (e) {
+          alert('Ogiltigt format – ingen ändring gjordes.');
+        }
+      }
+    });
+
+    // Kalibrera dagens startvärde
     document.getElementById('calibrateDayBtn').addEventListener('click', () => {
       const alreadyUsedKwh = parseFloat(document.getElementById('calibrateKwhInput').value);
       const lastImport = parseFloat(localStorage.getItem('elkollen_day_last_import'));
@@ -1090,9 +1555,10 @@
         return;
       }
       const adjustedStart = lastImport - alreadyUsedKwh;
+      const estimatedCostSoFar = alreadyUsedKwh * currentTotalSekPerKwh;
       localStorage.setItem('elkollen_day_date', getTodayKey());
       localStorage.setItem('elkollen_day_start_import', String(adjustedStart));
-      localStorage.setItem('elkollen_day_cost_sek', String(alreadyUsedKwh * currentTotalSekPerKwh));
+      localStorage.setItem('elkollen_day_cost_sek', String(estimatedCostSoFar));
       updateDailyStatsFromMeter(lastImport, liveWatts);
       document.getElementById('calibrateKwhInput').value = '';
     });
@@ -1122,7 +1588,6 @@
       document.getElementById('hwStatusText').style.color = 'var(--muted)';
       document.getElementById('hwFeedback').textContent = '';
       document.getElementById('phasePills').style.display = 'none';
-      document.getElementById('powerCardTitle').textContent = 'Effektuttag (Simulerat)';
       updateCalculator();
     });
 
@@ -1135,14 +1600,18 @@
 
     document.getElementById('clearNgenicBtn').addEventListener('click', () => {
       localStorage.removeItem('elkollen_ngenic_token');
+      ngenicActive = false;
       document.getElementById('ngenicTokenInput').value = '';
       document.getElementById('ngenicStatusText').textContent = 'Ej aktiv';
       document.getElementById('ngenicStatusText').style.color = 'var(--muted)';
       document.getElementById('ngenicDataBox').textContent = 'Visar innetemperatur, börvärde och aktiv elprisstyrning när den är ansluten.';
       document.getElementById('ngenicMiniStatus').textContent = 'Ngenic: Ej ansluten';
+      updateCalculator();
     });
 
+    populateManualDayDropdown();
     loadSavedSettings();
+    renderMonthOverview();
     fetchPrices();
     fetchWeatherDonso();
   </script>
