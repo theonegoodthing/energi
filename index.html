@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Elkollen SE3 – Priser, Kraftläge & Realtid</title>
+  <title>Elkollen SE3 – Priser, Väder Donsö & Realtid</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
@@ -101,6 +101,15 @@
       border-radius: 14px;
       padding: 20px;
       margin-bottom: 24px;
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
     }
 
     .chart-wrapper {
@@ -279,7 +288,7 @@
 
   <header>
     <div>
-      <h1>⚡ Elkollen <span class="badge">SE3 • Göteborg</span></h1>
+      <h1>⚡ Elkollen <span class="badge">SE3 • Donsö</span></h1>
       <div class="sub-value" id="dateDisplay">Laddar datum...</div>
     </div>
     <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -340,9 +349,22 @@
 
   <!-- Prisgraf -->
   <div class="chart-container">
-    <div class="card-title" style="margin-bottom: 14px;">Dagens elpriser per timme – SE3 (öre/kWh exkl. moms)</div>
+    <div class="chart-header">
+      <div class="card-title" style="margin-bottom: 0;">Dagens elpriser per timme – SE3 (öre/kWh exkl. moms)</div>
+    </div>
     <div class="chart-wrapper">
       <canvas id="priceChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Vädergraf Donsö / Vinga (Temperatur + Vind m/s) -->
+  <div class="chart-container">
+    <div class="chart-header">
+      <div class="card-title" style="margin-bottom: 0;">Utomhustemperatur (°C) & Vind (m/s) per timme – Donsö / Södra skärgården</div>
+      <div class="sub-value" id="weatherNowBadge" style="margin-top: 0; color: var(--text); font-weight: 600;">Laddar väderdata...</div>
+    </div>
+    <div class="chart-wrapper">
+      <canvas id="weatherChart"></canvas>
     </div>
   </div>
 
@@ -511,6 +533,7 @@
     let hwActive = false;
     let hwInterval = null;
     let priceChartInstance = null;
+    let weatherChartInstance = null;
     let lastKnownHour = new Date().getHours();
 
     // Hämta dagens datumnyckel (YYYY-MM-DD)
@@ -525,7 +548,6 @@
       const storedDate = localStorage.getItem('elkollen_day_date');
 
       if (storedDate !== todayKey) {
-        // Nytt dygn! Nollställ basvärdena
         localStorage.setItem('elkollen_day_date', todayKey);
         if (currentMeterImportKwh !== null) {
           localStorage.setItem('elkollen_day_start_import', String(currentMeterImportKwh));
@@ -560,25 +582,19 @@
       if (currentMeterImportKwh === undefined || currentMeterImportKwh === null) return;
 
       const tracker = getDailyTracker(currentMeterImportKwh);
-
-      // Räkna ut skillnad i kWh sedan förra mätningen (för 3 sek sedan)
       let deltaKwh = currentMeterImportKwh - tracker.lastImport;
 
-      // Skydd mot eventuella mätarhopp; om P1-import inte hunnit ticka 0.001 kWh på 3 sek,
-      // använder vi den exakta momentana effekten under 3 sek (W * 3s / 3600s / 1000) för mjuk realtidskostnad
       let newCost = tracker.accumulatedCost;
       if (deltaKwh > 0 && deltaKwh < 1) {
         newCost += deltaKwh * currentTotalSekPerKwh;
         localStorage.setItem('elkollen_day_last_import', String(currentMeterImportKwh));
       } else if (currentWatts > 0 && currentTotalSekPerKwh > 0) {
-        // Mjuk uppdatering var 3:e sekund baserat på W så att örena tickar i realtid
         const sliceKwh = (currentWatts / 1000) * (3 / 3600);
         newCost += sliceKwh * currentTotalSekPerKwh;
       }
 
       localStorage.setItem('elkollen_day_cost_sek', String(newCost));
 
-      // Total kWh idag baserat på mätarställningen (eller mjukt interpolerat mellan 0.001-steg)
       let todayKwh = Math.max(0, currentMeterImportKwh - tracker.startImport);
 
       document.getElementById('todayKwhDisplay').textContent = todayKwh.toFixed(2).replace('.', ',') + ' kWh';
@@ -596,7 +612,6 @@
       document.getElementById('hwV2TokenBox').style.display = ver === 'v2' ? 'block' : 'none';
     }
 
-    // Ladda sparade inställningar från localStorage
     function loadSavedSettings() {
       const savedGrid = localStorage.getItem('elkollen_grid');
       const savedTax = localStorage.getItem('elkollen_tax');
@@ -614,7 +629,6 @@
       document.getElementById('hwTokenInput').value = savedHwToken;
       toggleHwVersionUI();
 
-      // Visa eventuellt redan sparade dagssiffror direkt vid sidladdning
       const tracker = getDailyTracker(null);
       if (!isNaN(tracker.startImport) && !isNaN(tracker.lastImport)) {
         const kwh = Math.max(0, tracker.lastImport - tracker.startImport);
@@ -646,7 +660,6 @@
       return { year, month, day };
     }
 
-    // Uppdaterar priser, totaltaxa och kostnad just nu (körs varje gång W eller taxa ändras)
     function updateCalculator() {
       saveFeeSettings();
 
@@ -660,19 +673,16 @@
       const tax = Number(document.getElementById('taxInput').value) || 0;
       const markup = Number(document.getElementById('markupInput').value) || 0;
 
-      // Totalpris i kr/kWh inkl 25% moms
       const totalOreExVat = currentSpotOre + gridFee + tax + markup;
       currentTotalSekPerKwh = (totalOreExVat / 100) * 1.25;
 
       document.getElementById('currentTotal').textContent = currentTotalSekPerKwh.toFixed(2).replace('.', ',') + ' kr/kWh';
 
-      // Kostnad per timme just nu (uppdateras vid varje 3s-poll!)
       const kw = liveWatts / 1000;
       const costPerHour = kw * currentTotalSekPerKwh;
       document.getElementById('liveCostPerHour').textContent = costPerHour.toFixed(2).replace('.', ',') + ' kr/h';
     }
 
-    // Generera v2 Token genom att anropa POST https://<ip>/api/user
     async function pairHomeWizardV2() {
       const rawIp = document.getElementById('hwIpInput').value.trim();
       if (!rawIp) {
@@ -709,13 +719,12 @@
       }
     }
 
-    // HomeWizard P1 Polling (var 3:e sekund)
     async function pollHomeWizard(ip, version, token) {
-      // Kolla om vi slagit över till ny timme eller nytt dygn så spotpriset alltid är aktuellt
       const nowHour = new Date().getHours();
       if (nowHour !== lastKnownHour) {
         lastKnownHour = nowHour;
         fetchPrices();
+        fetchWeatherDonso();
       }
 
       const cleanIp = ip.replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim();
@@ -763,9 +772,7 @@
         document.getElementById('hwFeedback').style.color = 'var(--muted)';
         document.getElementById('hwFeedback').textContent = `Senast uppdaterad: ${timeStr}`;
 
-        // 1. Uppdatera "Kostnad just nu"
         updateCalculator();
-        // 2. Uppdatera "Dagens förbrukning" & "Dagens kostnad" i samma 3-sekunderspuls
         updateDailyStatsFromMeter(totalImport, liveWatts);
       } catch (err) {
         hwActive = false;
@@ -788,7 +795,6 @@
       hwInterval = setInterval(() => pollHomeWizard(ip, version, token), 3000);
     }
 
-    // Ngenic API hämtning
     async function fetchNgenicData(token) {
       if (!token) return;
       const cleanToken = token.trim();
@@ -890,14 +896,14 @@
           `Snitt: ${avgPrice.replace('.', ',')} öre/kWh`;
 
         updateCalculator();
-        renderChart(labels, pricesOre, barColors);
+        renderPriceChart(labels, pricesOre, barColors);
       } catch (err) {
         document.getElementById('currentSpot').textContent = 'Fel vid hämtning';
         console.error(err);
       }
     }
 
-    function renderChart(labels, values, colors) {
+    function renderPriceChart(labels, values, colors) {
       const ctx = document.getElementById('priceChart').getContext('2d');
       if (priceChartInstance) priceChartInstance.destroy();
 
@@ -940,6 +946,134 @@
       });
     }
 
+    // Hämta väder per timme för Donsö / Vinga (57.60° N, 11.80° Ö)
+    async function fetchWeatherDonso() {
+      const lat = 57.60;
+      const lon = 11.80;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,wind_speed_10m&wind_speed_unit=ms&timezone=Europe%2FStockholm&forecast_days=1`;
+
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Kunde inte hämta väder');
+        const data = await res.json();
+
+        const currentHour = new Date().getHours();
+        const labels = [];
+        const temps = [];
+        const winds = [];
+        const tempColors = [];
+
+        data.hourly.time.forEach((timeStr, idx) => {
+          const hour = new Date(timeStr).getHours();
+          const t = Number(data.hourly.temperature_2m[idx].toFixed(1));
+          const w = Number(data.hourly.wind_speed_10m[idx].toFixed(1));
+
+          labels.push(`${String(hour).padStart(2, '0')}:00`);
+          temps.push(t);
+          winds.push(w);
+
+          if (hour === currentHour) {
+            tempColors.push('#eab308'); // Aktuell timme markerad i gult
+            document.getElementById('weatherNowBadge').textContent =
+              `Just nu Donsö: ${t.toFixed(1).replace('.', ',')} °C • ${w.toFixed(1).replace('.', ',')} m/s`;
+          } else if (t <= 0) {
+            tempColors.push('rgba(129, 140, 248, 0.75)'); // Minusgrader
+          } else {
+            tempColors.push('rgba(56, 189, 248, 0.65)'); // Plusgrader
+          }
+        });
+
+        renderWeatherChart(labels, temps, winds, tempColors);
+      } catch (err) {
+        document.getElementById('weatherNowBadge').textContent = 'Kunde inte hämta väderdata';
+        console.error(err);
+      }
+    }
+
+    function renderWeatherChart(labels, temps, winds, tempColors) {
+      const ctx = document.getElementById('weatherChart').getContext('2d');
+      if (weatherChartInstance) weatherChartInstance.destroy();
+
+      weatherChartInstance = new Chart(ctx, {
+        data: {
+          labels,
+          datasets: [
+            {
+              type: 'bar',
+              label: 'Temperatur (°C)',
+              data: temps,
+              backgroundColor: tempColors,
+              borderRadius: 6,
+              yAxisID: 'yTemp',
+              order: 2
+            },
+            {
+              type: 'line',
+              label: 'Vind (m/s)',
+              data: winds,
+              borderColor: '#22c55e',
+              backgroundColor: '#22c55e',
+              borderWidth: 2.5,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              tension: 0.3,
+              yAxisID: 'yWind',
+              order: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            legend: {
+              display: true,
+              labels: { color: '#94a3b8' }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  if (ctx.dataset.yAxisID === 'yTemp') {
+                    return `Temperatur: ${ctx.parsed.y.toFixed(1).replace('.', ',')} °C`;
+                  }
+                  return `Vind: ${ctx.parsed.y.toFixed(1).replace('.', ',')} m/s`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: '#94a3b8' }
+            },
+            yTemp: {
+              type: 'linear',
+              position: 'left',
+              grid: { color: '#334155' },
+              ticks: {
+                color: '#38bdf8',
+                callback: (val) => val + ' °C'
+              }
+            },
+            yWind: {
+              type: 'linear',
+              position: 'right',
+              min: 0,
+              grid: { drawOnChartArea: false },
+              ticks: {
+                color: '#22c55e',
+                callback: (val) => val + ' m/s'
+              }
+            }
+          }
+        }
+      });
+    }
+
     // Event listeners
     document.getElementById('wattSlider').addEventListener('input', updateCalculator);
     document.getElementById('gridFeeInput').addEventListener('input', updateCalculator);
@@ -948,7 +1082,6 @@
     document.getElementById('hwVersionSelect').addEventListener('change', toggleHwVersionUI);
     document.getElementById('pairHwBtn').addEventListener('click', pairHomeWizardV2);
 
-    // Manuell kalibrering av dagens startvärde
     document.getElementById('calibrateDayBtn').addEventListener('click', () => {
       const alreadyUsedKwh = parseFloat(document.getElementById('calibrateKwhInput').value);
       const lastImport = parseFloat(localStorage.getItem('elkollen_day_last_import'));
@@ -1011,6 +1144,7 @@
 
     loadSavedSettings();
     fetchPrices();
+    fetchWeatherDonso();
   </script>
 </body>
 </html>
